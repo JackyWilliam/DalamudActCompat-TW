@@ -51,6 +51,12 @@ Directory.CreateDirectory(testRoot);
 
 try
 {
+    if (args.Contains("--ui-acceptance-only", StringComparer.Ordinal))
+    {
+        UiLanguageSmokeTests.Run();
+        OverlayManagerSmokeTests.Acceptance();
+        return 0;
+    }
     if (args.Contains("--overlay-manager-only", StringComparer.Ordinal))
     {
         OverlayManagerSmokeTests.Run(Environment.GetEnvironmentVariable("DACT_TEST_CIMGUI") is { Length: > 0 });

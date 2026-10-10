@@ -1,4 +1,5 @@
 {
+  "Opened": "已開啟",
   "Collapse direction": "收起方向",
   "Upward": "向上",
   "Downward": "向下",
@@ -834,7 +835,7 @@
   "Only one extension, TTS, trigger, or marker feature fails": "只有某個擴充套件、TTS、觸發器或標點不能用",
   "Only one meter is shown at a time; each template keeps its own position, size, lock, and slots.": "一次只顯示一個榜單；切換時保留各模板的位置、大小、鎖定和槽位配置。",
   "Only required after a direct administrator reset when this PC has no saved account key.": "僅當管理員直接重置過密碼，且本機沒有儲存帳號金鑰時才需要。",
-  "Open": "已開啟",
+  "Open": "開啟",
   "Open ACT plugin folder": "開啟 ACT 擴充套件資料夾",
   "Open Afdian in your browser.\nAfter sponsoring, contact the administrator to verify your account; tier {0} permanently unlocks the Eorzea skin.": "在瀏覽器中開啟愛發電。\n贊助後請聯絡管理員核對帳號並開通等級；{0} 級永久解鎖艾歐澤亞皮膚。",
   "Open Cactbot or a named HTML template.": "開啟 Cactbot 或指定 HTML 模板。",
