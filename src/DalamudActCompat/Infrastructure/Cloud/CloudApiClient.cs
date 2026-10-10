@@ -124,16 +124,19 @@ internal sealed partial class CloudApiClient : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient httpClient;
     private readonly bool ownsClient;
+    private readonly string? gameVersion;
 
     public CloudApiClient()
-        : this(new HttpClient { BaseAddress = DefaultBaseAddress }, ownsClient: true)
+        : this(new HttpClient { BaseAddress = DefaultBaseAddress }, ownsClient: true,
+            gameVersion: CloudClientIdentity.ReadRunningGameVersion(Environment.ProcessPath))
     {
     }
 
-    internal CloudApiClient(HttpClient httpClient, bool ownsClient = false)
+    internal CloudApiClient(HttpClient httpClient, bool ownsClient = false, string? gameVersion = null)
     {
         this.httpClient = httpClient;
         this.ownsClient = ownsClient;
+        this.gameVersion = CloudClientIdentity.NormalizeGameVersion(gameVersion);
         this.httpClient.Timeout = TimeSpan.FromSeconds(90);
     }
 
@@ -495,7 +498,7 @@ internal sealed partial class CloudApiClient : IDisposable
         return await ReadJsonAsync<T>(response, cancellationToken).ConfigureAwait(false);
     }
 
-    private static HttpRequestMessage CreateRequest(
+    private HttpRequestMessage CreateRequest(
         HttpMethod method,
         string relativeUri,
         string? token)
@@ -505,6 +508,10 @@ internal sealed partial class CloudApiClient : IDisposable
         // including downgrades, rather than a separately maintained version string.
         if (typeof(CloudApiClient).Assembly.GetName().Version is { } version)
             request.Headers.Add("X-DACT-Version", version.ToString(4));
+        // Region identifies this independent distribution, regardless of UI language.
+        request.Headers.Add("X-DACT-Region", "TW");
+        if (gameVersion is not null)
+            request.Headers.Add("X-DACT-Game-Version", gameVersion);
         if (!string.IsNullOrWhiteSpace(token))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

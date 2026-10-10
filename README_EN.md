@@ -33,9 +33,17 @@ DACT does not promise compatibility with every ACT plugin. Extensions that depen
 
 ## Installation
 
-### 1. Obtain the Taiwan candidate
+### 1. Add the Taiwan plugin repository
 
-No Taiwan subscription feed has been published. Build with `tools/build-taiwan.ps1` or obtain the artifact from the Taiwan Build workflow on this repository's `main` branch. Extract the complete candidate into a separate test directory and register its DLL through the Taiwan Dalamud developer-plugin settings. This candidate requires the pinned API 13 client version; it does not replace the CN installation.
+In the Taiwan client, open `/xlsettings` and add this URL under Experimental → Custom Plugin Repositories, then enable it and save:
+
+```text
+https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
+```
+
+Open `/xlplugins`, refresh, and install **Dalamud ACT Compat (TW)**. The same URL supplies future updates. It currently serves the **0.4.5.7 test candidate**, defaults to Traditional Chinese, and excludes Matcha. Taiwan in-game acceptance is still pending.
+
+The full package is also available from [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.7), or build it with `tools/build-taiwan.ps1`. This repository requires the pinned Taiwan API 13 client; do not mix it with the CN repository.
 
 See [Taiwan build notes](docs/taiwan-build.md) before testing. Do not use the historical CN repair utility for this build.
 

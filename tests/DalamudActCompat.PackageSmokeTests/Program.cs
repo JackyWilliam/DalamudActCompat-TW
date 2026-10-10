@@ -1799,8 +1799,8 @@ static void ValidatePluginRepositoryMetadata()
     var projectRoot = FindProjectRoot();
     using var document = JsonDocument.Parse(File.ReadAllText(
         Path.Combine(projectRoot, "repo", "pluginmaster.json")));
-    Assert(document.RootElement.GetArrayLength() == 0,
-        "An unpublished Taiwan candidate must not advertise CN or historical repair downloads.");
+    Assert(document.RootElement.GetArrayLength() == 1,
+        "The Taiwan feed must contain only its own plugin, without historical repair downloads.");
     using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(projectRoot,
         "src", "DalamudActCompat", "bin", "Release", "DalamudActCompat.json")));
     Assert(manifest.RootElement.GetProperty("DalamudApiLevel").GetInt32() == 13 &&
@@ -1812,6 +1812,19 @@ static void ValidatePluginRepositoryMetadata()
     Assert(manifest.RootElement.GetProperty("RepoUrl").GetString() ==
            "https://github.com/JackyWilliam/DalamudActCompat-TW",
         "Taiwan package source link points at the previous repository.");
+    var entry = document.RootElement[0];
+    foreach (var property in new[] { "InternalName", "AssemblyVersion", "RepoUrl", "DalamudApiLevel", "ApplicableVersion", "MinimumDalamudVersion" })
+        Assert(entry.GetProperty(property).ToString() == manifest.RootElement.GetProperty(property).ToString(),
+            $"Taiwan subscription {property} differs from the packaged manifest.");
+    var version = manifest.RootElement.GetProperty("AssemblyVersion").GetString();
+    var download = $"https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v{version}/DalamudActCompat-TW-candidate.zip";
+    foreach (var property in new[] { "DownloadLinkInstall", "DownloadLinkUpdate", "DownloadLinkTesting" })
+        Assert(entry.GetProperty(property).GetString() == download,
+            $"Taiwan subscription {property} points at a different client or release.");
+    Assert(entry.GetProperty("Name").GetString()!.Contains("TW") &&
+           entry.GetProperty("Description").GetString()!.Contains("測試候選") &&
+           entry.GetProperty("LastUpdate").GetInt64() is > 1_700_000_000 and < 10_000_000_000,
+        "Taiwan feed lost its region, candidate status or Unix-seconds timestamp.");
 }
 
 static void ValidateBoundedHostQueue()
@@ -10338,7 +10351,8 @@ static void ValidateHtmlOverlayDefaults()
         readmeSource.Contains("/actcompat off", StringComparison.Ordinal) &&
         readmeSource.Contains("[English](README_EN.md)", StringComparison.Ordinal) &&
         readmeSource.Contains("## 安裝", StringComparison.Ordinal) &&
-        readmeSource.Contains("### 1. 獲取台服候選包", StringComparison.Ordinal) &&
+        readmeSource.Contains("### 1. 加入台服插件訂閱", StringComparison.Ordinal) &&
+        readmeSource.Contains("https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json", StringComparison.Ordinal) &&
         readmeSource.Contains("tools/build-taiwan.ps1", StringComparison.Ordinal) &&
         !readmeSource.Contains(
             "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompatRepo/main/pluginmaster.json",

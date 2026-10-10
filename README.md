@@ -35,9 +35,17 @@ Dalamud ACT Compat（簡稱 DACT）把 `FFXIV_ACT_Plugin`、`OverlayPlugin` 和�
 
 ## 安裝
 
-### 1. 獲取台服候選包
+### 1. 加入台服插件訂閱
 
-台服訂閱尚未釋出。可執行 `tools/build-taiwan.ps1` 構建，或從本倉庫 `main` 的 Taiwan Build 工作流下載候選產物。將完整候選包解壓到獨立測試目錄，透過台服 Dalamud 的開發外掛設定登記 DLL。候選包僅適用於鎖定的 API 13 客戶端版本，不覆蓋原國服安裝。
+在台服遊戲內輸入 `/xlsettings`，於「實驗性」的自訂插件儲存庫加入以下網址，啟用並儲存：
+
+```text
+https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
+```
+
+接著輸入 `/xlplugins`，重新整理後搜尋 **Dalamud ACT Compat (TW)** 並安裝。此網址也用於後續更新；目前提供 **0.4.5.7 測試候選版**，預設繁體中文，不包含 Matcha，台服遊戲內驗收仍待完成。
+
+也可從 [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.7) 取得完整候選包，或執行 `tools/build-taiwan.ps1` 自行構建。此訂閱僅適用於鎖定的台服 API 13 客戶端，不與國服訂閱混用。
 
 測試前請閱讀[台服構建說明](docs/taiwan-build.md)。歷史國服版本修復工具不適用於此台服構建。
 

@@ -9,6 +9,7 @@ internal static class CloudFriendsSmokeTests
 {
     public static async Task RunAsync(string root)
     {
+        await CloudClientIdentitySmokeTests.RunAsync(root);
         await ErrorsAsync();
         await ConnectionAsync();
         await PresenceSessionAsync(root);
@@ -209,7 +210,8 @@ internal static class CloudFriendsSmokeTests
         // The private service harness provides isolated ephemeral accounts only.
         Check(new Uri(f.BaseUrl).IsLoopback, "Live friends tests require a loopback fixture.");
         using var http = new HttpClient { BaseAddress = new Uri(f.BaseUrl + "/") };
-        using var api = new CloudApiClient(http);
+        // An explicit fixture build exercises transport/storage without needing a running game.
+        using var api = new CloudApiClient(http, gameVersion: "2026.09.14.0000.0000");
         var a = f.A.Token; var b = f.B.Token; var c = f.C.Token;
         Check((await api.ListFriendsAsync(a, default)).Friends.Count == 0, "Fixture was not isolated.");
         var lookup = await api.LookupFriendAsync(a, f.B.Username.ToUpperInvariant(), default);

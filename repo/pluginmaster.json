@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "Author": "raynording",
+    "Name": "Dalamud ACT Compat (TW)",
+    "InternalName": "DalamudActCompat",
+    "AssemblyVersion": "0.4.5.7",
+    "TestingAssemblyVersion": null,
+    "Description": "台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。",
+    "Punchline": "台服專用 ACT 相容平台，預設繁體中文。",
+    "RepoUrl": "https://github.com/JackyWilliam/DalamudActCompat-TW",
+    "ApplicableVersion": "2026.09.14.0000.0000",
+    "MinimumDalamudVersion": "13.0.0.16",
+    "DalamudApiLevel": 13,
+    "IsHide": false,
+    "IsTestingExclusive": false,
+    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v0.4.5.7/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v0.4.5.7/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v0.4.5.7/DalamudActCompat-TW-candidate.zip",
+    "LastUpdate": 1791611931,
+    "Changelog": "首次台服獨立測試訂閱。預設繁體中文，保留既有語言選擇；提供完整台服候選功能，不包含 Matcha。",
+    "CanUnloadAsync": true,
+    "IconUrl": "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/Assets/act-logo.jpg"
+  }
+]
