@@ -1,3 +1,5 @@
+> 历史国服文档，不适用于本台服仓库。台服请使用[独立构建说明](taiwan-build.md)；以下旧安装、发布和修复命令仅供历史溯源。
+
 # Windows Custom Repository Test
 
 This is the shortest path to test the plugin from a custom Dalamud repository on Windows.

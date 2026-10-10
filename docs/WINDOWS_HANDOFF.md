@@ -1,3 +1,5 @@
+> 历史国服文档，不适用于本台服仓库。台服请使用[独立构建说明](taiwan-build.md)；以下旧安装、发布和修复命令仅供历史溯源。
+
 # Windows Handoff
 
 This project should be built and tested on Windows for the next stage. The macOS workspace has source code, repository metadata, and CI scaffolding, but it cannot fully validate the Dalamud plugin without local Dalamud development files.

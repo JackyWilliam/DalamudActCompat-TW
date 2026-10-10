@@ -1,4 +1,4 @@
-> 台服分支说明：Matcha 未随台服候选包分发。下列历史来源说明保留用于源码归属核对。台服依赖来源与哈希见 tools/taiwan-dependencies.lock.json。
+> 台服仓库说明：Matcha 未随台服候选包分发。下列历史来源说明保留用于源码归属核对。台服依赖来源与哈希见 tools/taiwan-dependencies.lock.json。
 
 # Third-party notices
 
@@ -6,7 +6,9 @@ DalamudActCompat embeds compatibility components derived from
 [IINACT](https://github.com/marzent/IINACT) and its dependency tree.
 IINACT is licensed under GPL-3.0. The patched source used by this project is
 available from `vendor/IINACT` and
-<https://github.com/JackyWilliam/IINACT/tree/compat/dalamud-act-compat-net10>.
+<https://github.com/JackyWilliam/IINACT-TW>. It is based on the Taiwan
+`tc/api13_net9` branch of <https://github.com/PlusoneChiang/IINACT>; exact
+source commits are recorded in `tools/taiwan-dependencies.lock.json`.
 
 The release archive includes the applicable upstream license texts under
 `LICENSES/`. Copyright remains with the respective upstream authors.

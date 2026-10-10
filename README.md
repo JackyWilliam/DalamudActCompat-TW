@@ -1,16 +1,16 @@
 # Dalamud ACT Compat (TW)
 
-> 本分支为台服 API 13 / .NET 9 独立候选构建，未包含 Matcha，尚待台服游戏内验收。依赖锁定及验证范围见[台服构建说明](docs/taiwan-build.md)。
+> 本仓库为台服 API 13 / .NET 9 独立候选构建，未包含 Matcha，尚待台服游戏内验收。依赖锁定及验证范围见[台服构建说明](docs/taiwan-build.md)。
 
 [简体中文](README.md) | [English](README_EN.md)
 
-[官方网站](https://dact.localhost2019.com/) · [台服候选构建](https://github.com/JackyWilliam/DalamudActCompat/actions?query=branch%3Afeature%2Ftaiwan-standalone) · [第三方扩展兼容说明](docs/third-party-compatibility.md) · [问题反馈](https://github.com/JackyWilliam/DalamudActCompat/issues) · [爱发电支持](https://ifdian.net/a/raynor)
+[官方网站](https://dact.localhost2019.com/) · [台服候选构建](https://github.com/JackyWilliam/DalamudActCompat-TW/actions/workflows/build.yml) · [第三方扩展兼容说明](docs/third-party-compatibility.md) · [问题反馈](https://github.com/JackyWilliam/DalamudActCompat-TW/issues) · [爱发电支持](https://ifdian.net/a/raynor)
 
 **在 FFXIV 的 Dalamud 中直接使用战斗统计、Cactbot 悬浮窗和常见 ACT 扩展，不需要另外启动 ACT。**
 
 Dalamud ACT Compat（简称 DACT）把 `FFXIV_ACT_Plugin`、`OverlayPlugin` 和游戏内界面整合进一个 Dalamud 插件。Triggernometry、鲶鱼精、FoxTTS 等传统 ACT 扩展运行在独立 Host 进程中；某个扩展卡死时，可以只重启对应 Host，不必立刻重启游戏。
 
-> **DACT 是免费项目。** 插件和一次性激活码均不收费，请勿购买或转售；如果有人借 DACT 或激活码收费，请通过 [Issues](https://github.com/JackyWilliam/DalamudActCompat/issues)、QQ 群或 Discord 联系维护者。
+> **DACT 是免费项目。** 插件和一次性激活码均不收费，请勿购买或转售；如果有人借 DACT 或激活码收费，请通过 [Issues](https://github.com/JackyWilliam/DalamudActCompat-TW/issues)、QQ 群或 Discord 联系维护者。
 
 此独立构建面向 **Windows、台服 Dalamud API 13、.NET 9**，尚未完成台服游戏内验收。它不是 Square Enix、Dalamud、ACT、FFLogs 或所捆绑第三方扩展的官方项目。
 
@@ -35,17 +35,17 @@ Dalamud ACT Compat（简称 DACT）把 `FFXIV_ACT_Plugin`、`OverlayPlugin` 和�
 
 ### 1. 获取台服候选包
 
-台服订阅尚未发布。可运行 `tools/build-taiwan.ps1` 构建，或从 `feature/taiwan-standalone` 工作流下载候选产物。将完整候选包解压到独立测试目录，通过台服 Dalamud 的开发插件设置登记 DLL。候选包仅适用于锁定的 API 13 客户端版本，不覆盖原国服安装。
+台服订阅尚未发布。可运行 `tools/build-taiwan.ps1` 构建，或从本仓库 `main` 的 Taiwan Build 工作流下载候选产物。将完整候选包解压到独立测试目录，通过台服 Dalamud 的开发插件设置登记 DLL。候选包仅适用于锁定的 API 13 客户端版本，不覆盖原国服安装。
 
 测试前请阅读[台服构建说明](docs/taiwan-build.md)。历史国服版本修复工具不适用于此台服构建。
 
-### 3. 获取一次性激活码
+### 2. 获取一次性激活码
 
 注册 DACT 账号需要一次性激活码。请加入 QQ 群 **1098561701**，或加入 [Discord 服务器](https://discord.gg/mZHFwXe7Gk)，联系群主或频道主获取。
 
 > 激活码使用后即失效，请勿把收到的激活码发布到 Issue 或其他公开位置。
 
-### 4. 完成首次启动
+### 3. 完成首次启动
 
 1. 阅读首次弹出的第三方扩展声明，核对作者、来源、版本、权限和 SHA-256，再决定是否安装及授权。
 2. 输入 `/actcompat` 打开控制中心。
@@ -176,13 +176,15 @@ FFXIV / Dalamud 进程
 需要 Windows、.NET SDK 10、.NET 9 Windows Desktop 运行库和 7-Zip。脚本校验锁定的台服 API 13 引用，生成独立候选包，不更新国服订阅。
 
 ```powershell
-git clone --branch feature/taiwan-standalone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat.git
-cd DalamudActCompat
+git clone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat-TW.git
+cd DalamudActCompat-TW
 ./tools/build-taiwan.ps1
 ```
 
 依赖来源、SHA-256、测试覆盖及游戏内验收边界见[台服构建说明](docs/taiwan-build.md)。
 
 ## 许可证
+
+Copyright (C) 2026 DalamudActCompat contributors.
 
 Dalamud ACT Compat 以 [GPL-3.0](LICENSE.md) 发布。随包第三方组件分别遵循各自许可证；详情见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 和发布包内的 `LICENSES/` 目录。

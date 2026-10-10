@@ -1807,6 +1807,11 @@ static void ValidatePluginRepositoryMetadata()
            manifest.RootElement.GetProperty("Name").GetString()!.Contains("TW") &&
            manifest.RootElement.GetProperty("ApplicableVersion").GetString() == "2026.09.14.0000.0000",
         "Taiwan package metadata points at another client/API.");
+    // Dalamud uses the generated manifest for the source link; changing only the
+    // README would still send Taiwan users to the mainland repository.
+    Assert(manifest.RootElement.GetProperty("RepoUrl").GetString() ==
+           "https://github.com/JackyWilliam/DalamudActCompat-TW",
+        "Taiwan package source link points at the previous repository.");
 }
 
 static void ValidateBoundedHostQueue()

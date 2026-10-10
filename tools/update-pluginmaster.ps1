@@ -17,6 +17,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# The retained CN publisher must never generate a Taiwan feed with CN asset names.
+throw 'Taiwan subscription is not published. Use tools/build-taiwan.ps1 for the candidate.'
+
 $versionParts = $Version.Split(".")
 if ($versionParts.Count -notin 3, 4 -or
     $versionParts.Where({ $_ -notmatch '^\d+$' }).Count -ne 0) {

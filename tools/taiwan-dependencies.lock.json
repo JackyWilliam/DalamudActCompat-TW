@@ -27,5 +27,6 @@
     "cimgui.dll": "04764fb4cb802fac06cc6ecf4f2807440ba4d89e175278077f8021f364e4aeac"
   },
   "actPluginSha256": "70a0dea620a8038ac75e6c060d563849e9953c50ea80f1c2c5262e198fdba43c",
-  "dactIinactCommit": "39af59ed29e634e4aaf4931bb4c84e623511ef89"
+  "dactIinactCommit": "2ae438a171f8bef7e1cf863c93f08e497c03fad9",
+  "dactIinactRepository": "https://github.com/JackyWilliam/IINACT-TW"
 }

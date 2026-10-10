@@ -1,16 +1,16 @@
 # Dalamud ACT Compat (TW)
 
-> This branch is an independent Taiwan API 13 / .NET 9 candidate. Matcha is excluded. In-game Taiwan acceptance is pending. See [Taiwan build notes](docs/taiwan-build.md) for pinned dependencies and validation limits.
+> This repository is the independent Taiwan API 13 / .NET 9 candidate. Matcha is excluded. In-game Taiwan acceptance is pending. See [Taiwan build notes](docs/taiwan-build.md) for pinned dependencies and validation limits.
 
 [简体中文](README.md) | [English](README_EN.md)
 
-[Website (中文)](https://dact.localhost2019.com/) · [Taiwan candidate builds](https://github.com/JackyWilliam/DalamudActCompat/actions?query=branch%3Afeature%2Ftaiwan-standalone) · [Third-party compatibility](docs/third-party-compatibility.md) · [Report an issue](https://github.com/JackyWilliam/DalamudActCompat/issues) · [Support on Afdian](https://ifdian.net/a/raynor)
+[Website (中文)](https://dact.localhost2019.com/) · [Taiwan candidate builds](https://github.com/JackyWilliam/DalamudActCompat-TW/actions/workflows/build.yml) · [Third-party compatibility](docs/third-party-compatibility.md) · [Report an issue](https://github.com/JackyWilliam/DalamudActCompat-TW/issues) · [Support on Afdian](https://ifdian.net/a/raynor)
 
 **Use an in-game combat meter, Cactbot overlays, and common ACT extensions directly in FFXIV through Dalamud—without running ACT separately.**
 
 Dalamud ACT Compat (DACT) combines `FFXIV_ACT_Plugin`, `OverlayPlugin`, and an in-game UI in one Dalamud plugin. Traditional ACT extensions such as Triggernometry, PostNamazu, and FoxTTS run in separate Host processes. If an extension hangs, you can restart its Host instead of immediately restarting the game.
 
-> **DACT is a free project.** Neither the plugin nor its one-time activation keys are sold. Do not buy or resell them; report anyone charging for DACT or its keys through [Issues](https://github.com/JackyWilliam/DalamudActCompat/issues), the QQ group, or Discord.
+> **DACT is a free project.** Neither the plugin nor its one-time activation keys are sold. Do not buy or resell them; report anyone charging for DACT or its keys through [Issues](https://github.com/JackyWilliam/DalamudActCompat-TW/issues), the QQ group, or Discord.
 
 This checkout targets **Windows, Taiwan Dalamud API 13 and .NET 9**. It is an unofficial project and has not yet been validated in the Taiwan game client.
 
@@ -35,17 +35,17 @@ DACT does not promise compatibility with every ACT plugin. Extensions that depen
 
 ### 1. Obtain the Taiwan candidate
 
-No Taiwan subscription feed has been published. Build with `tools/build-taiwan.ps1` or obtain the artifact from the `feature/taiwan-standalone` workflow. Extract the complete candidate into a separate test directory and register its DLL through the Taiwan Dalamud developer-plugin settings. This candidate requires the pinned API 13 client version; it does not replace the CN installation.
+No Taiwan subscription feed has been published. Build with `tools/build-taiwan.ps1` or obtain the artifact from the Taiwan Build workflow on this repository's `main` branch. Extract the complete candidate into a separate test directory and register its DLL through the Taiwan Dalamud developer-plugin settings. This candidate requires the pinned API 13 client version; it does not replace the CN installation.
 
 See [Taiwan build notes](docs/taiwan-build.md) before testing. Do not use the historical CN repair utility for this build.
 
-### 3. Obtain a one-time activation key
+### 2. Obtain a one-time activation key
 
 Registering a DACT account requires a one-time activation key. Join QQ group **1098561701** or the [Discord server](https://discord.gg/mZHFwXe7Gk), then contact the group or server owner to request one.
 
 > An activation key expires after use. Do not post a received key in an Issue or any other public location.
 
-### 4. Complete first-time setup
+### 3. Complete first-time setup
 
 1. Read the third-party extension notice. Check each author, source, version, permission set, and SHA-256 before deciding whether to install and authorize it.
 2. Enter `/actcompat` to open the Control Center.
@@ -176,13 +176,15 @@ The parser and OverlayPlugin remain in the game process so they can consume Dala
 Use Windows, .NET SDK 10, the .NET 9 Windows Desktop runtime and 7-Zip. The script verifies pinned Taiwan API 13 references and creates an independent candidate without updating the CN feed.
 
 ```powershell
-git clone --branch feature/taiwan-standalone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat.git
-cd DalamudActCompat
+git clone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat-TW.git
+cd DalamudActCompat-TW
 ./tools/build-taiwan.ps1
 ```
 
 See [Taiwan build notes](docs/taiwan-build.md) for sources, SHA-256 pins, test coverage and remaining in-game acceptance.
 
 ## License
+
+Copyright (C) 2026 DalamudActCompat contributors.
 
 Dalamud ACT Compat is distributed under [GPL-3.0](LICENSE.md). Bundled third-party components remain under their respective licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the `LICENSES/` directory in release archives.

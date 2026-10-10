@@ -1,17 +1,7 @@
-# DalamudActCompat Custom Repository
+# 台服候选仓库元数据
 
-Add this URL in Dalamud's custom plugin repositories:
+源码与候选构建位于 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW)。
 
-```text
-https://raw.githubusercontent.com/JackyWilliam/DalamudActCompatRepo/main/pluginmaster.json
-```
+`pluginmaster.json` 当前为空：台服正式订阅尚未发布。候选包从本仓库的 Taiwan Build 工作流获取，构建和测试安装方式见 [台服构建说明](../docs/taiwan-build.md)。
 
-This directory contains the `pluginmaster.json` file that should be copied or mirrored into the public distribution repository `JackyWilliam/DalamudActCompatRepo`.
-
-The plugin ZIP should be published from the source repository release:
-
-```text
-https://github.com/JackyWilliam/DalamudActCompat/releases/download/v0.3.10.0/DalamudActCompat-core.zip
-```
-
-Keep the raw JSON URL and release ZIP URL separate. Dalamud users add the raw JSON URL; the JSON points Dalamud to the core ZIP. The core then verifies and caches the separately published Host, Cactbot, and bundled-extension packs.
+`cn-pluginmaster.reference.json` 仅保留历史国服元数据用于溯源，不能作为台服安装或更新源。台服构建不会同步到国服分发仓库。
