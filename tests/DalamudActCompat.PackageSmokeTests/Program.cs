@@ -10334,8 +10334,9 @@ static void ValidateHtmlOverlayDefaults()
         readmeSource.Contains("/actcompat off", StringComparison.Ordinal) &&
         readmeSource.Contains("[English](README_EN.md)", StringComparison.Ordinal) &&
         readmeSource.Contains("## 安装", StringComparison.Ordinal) &&
-        readmeSource.Contains("### 1. 添加自定义插件仓库", StringComparison.Ordinal) &&
-        readmeSource.Contains(
+        readmeSource.Contains("### 1. 获取台服候选包", StringComparison.Ordinal) &&
+        readmeSource.Contains("tools/build-taiwan.ps1", StringComparison.Ordinal) &&
+        !readmeSource.Contains(
             "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompatRepo/main/pluginmaster.json",
             StringComparison.Ordinal) &&
         readmeSource.Contains("## 界面预览", StringComparison.Ordinal) &&

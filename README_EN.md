@@ -1,15 +1,188 @@
-# Dalamud ACT Compat — Taiwan build
+# Dalamud ACT Compat (TW)
 
-This independent checkout targets Taiwan Dalamud API 13 / .NET 9 and game version `2026.09.14.0000.0000`. It is an offline-tested candidate, pending Taiwan in-game acceptance.
+> This branch is an independent Taiwan API 13 / .NET 9 candidate. Matcha is excluded. In-game Taiwan acceptance is pending. See [Taiwan build notes](docs/taiwan-build.md) for pinned dependencies and validation limits.
 
-The Taiwan IINACT branch `PlusoneChiang/IINACT:tc/api13_net9` is the parser base. Existing DACT features are retained; Matcha is excluded at the user's request because no verified Taiwan adaptation was found. The default UI is Traditional Chinese. Parser region is fixed to Taiwan even after importing a profile.
+[简体中文](README.md) | [English](README_EN.md)
 
-Build with .NET SDK 10, .NET 9 Windows Desktop runtime and 7-Zip:
+[Website (中文)](https://dact.localhost2019.com/) · [Taiwan candidate builds](https://github.com/JackyWilliam/DalamudActCompat/actions?query=branch%3Afeature%2Ftaiwan-standalone) · [Third-party compatibility](docs/third-party-compatibility.md) · [Report an issue](https://github.com/JackyWilliam/DalamudActCompat/issues) · [Support on Afdian](https://ifdian.net/a/raynor)
+
+**Use an in-game combat meter, Cactbot overlays, and common ACT extensions directly in FFXIV through Dalamud—without running ACT separately.**
+
+Dalamud ACT Compat (DACT) combines `FFXIV_ACT_Plugin`, `OverlayPlugin`, and an in-game UI in one Dalamud plugin. Traditional ACT extensions such as Triggernometry, PostNamazu, and FoxTTS run in separate Host processes. If an extension hangs, you can restart its Host instead of immediately restarting the game.
+
+> **DACT is a free project.** Neither the plugin nor its one-time activation keys are sold. Do not buy or resell them; report anyone charging for DACT or its keys through [Issues](https://github.com/JackyWilliam/DalamudActCompat/issues), the QQ group, or Discord.
+
+This checkout targets **Windows, Taiwan Dalamud API 13 and .NET 9**. It is an unofficial project and has not yet been validated in the Taiwan game client.
+
+## What you can do with it
+
+| Feature | What it is for |
+| --- | --- |
+| In-game combat meter | View 4/8/24-player DPS, rDPS, HPS, total damage, highest-hit actions, hit rates, deaths, and a local FFLogs percentile estimate |
+| Meter styles | Choose one of Classic, Horizontal, or Role Split; customize ordered slots in Page preview while Horizontal remains background-free |
+| Encounter history | Store runs and individual pulls, then inspect party data and raw logs |
+| Cactbot / HTML overlays | Install Cactbot resources and create, resize, lock, or click through in-game overlays |
+| Common ACT extensions | Use Triggernometry, PostNamazu, ACT.FoxTTS, and SilverDasher |
+| Imported extensions | Preflight DLL/ZIP packages and load compatible ACT plugins in a generic Host after permission review |
+| Accounts and cloud sync | Register with an activation key, optionally sign in automatically, create up to three friend invitations, and back up configuration with end-to-end encryption |
+| Friends and chat | Add friends, view presence, exchange messages and receive offline messages, with unread indicators, incoming bubbles, quick replies, and four notification sounds |
+| Shared RPets sign-in | Synchronize sign-in, account switching, and sign-out with the separately installed RPets plugin |
+| Isolation and diagnostics | Inspect the parser, shared Host and generic Host separately, then stop or restart only the failing component |
+
+DACT does not promise compatibility with every ACT plugin. Extensions that depend on old .NET Framework behavior, injection, arbitrary memory access, specialized ACT UI, or unimplemented APIs may not work.
+
+## Installation
+
+### 1. Obtain the Taiwan candidate
+
+No Taiwan subscription feed has been published. Build with `tools/build-taiwan.ps1` or obtain the artifact from the `feature/taiwan-standalone` workflow. Extract the complete candidate into a separate test directory and register its DLL through the Taiwan Dalamud developer-plugin settings. This candidate requires the pinned API 13 client version; it does not replace the CN installation.
+
+See [Taiwan build notes](docs/taiwan-build.md) before testing. Do not use the historical CN repair utility for this build.
+
+### 3. Obtain a one-time activation key
+
+Registering a DACT account requires a one-time activation key. Join QQ group **1098561701** or the [Discord server](https://discord.gg/mZHFwXe7Gk), then contact the group or server owner to request one.
+
+> An activation key expires after use. Do not post a received key in an Issue or any other public location.
+
+### 4. Complete first-time setup
+
+1. Read the third-party extension notice. Check each author, source, version, permission set, and SHA-256 before deciding whether to install and authorize it.
+2. Enter `/actcompat` to open the Control Center.
+3. On Overview, keep Enable parsing and Start parser automatically enabled. Confirm the status at the top is Running.
+4. Enter `/actcompat meter`, then deal valid damage to a striking dummy or duty enemy to populate the meter.
+5. Configure Cactbot, Triggernometry, PostNamazu, or other optional extensions from the Overlays and Extensions pages only when needed.
+
+The help button in the top-right corner opens the complete in-game guide. It supports Chinese and English keyword search and lets you copy commands.
+
+Starting with 0.4.1.0, sign in and select the friends icon beside the cloud status to find accounts, handle friend requests, and open chats. The status popup controls presence and optional duty sharing. Notification settings provide independent bubble and sound switches, position and background opacity controls, and four sounds with previews. Each pair of friends retains the latest 20 history messages and latest three pending offline messages across both participants. Friend requests are separate from registration invitation codes.
+
+> Open FFLogs upload logs only opens the local Network log directory and copies its path. It does not upload automatically. Diagnostic logs are for troubleshooting and do not replace combat logs.
+
+## Interface preview
+
+![Control Center overview](docs/images/readme/control-center-overview.png)
+
+| Combat Meter settings | Cactbot and HTML overlays |
+| --- | --- |
+| [![Combat Meter settings](docs/images/readme/combat-meter-settings.png)](docs/images/readme/combat-meter-settings.png) | [![Overlay settings](docs/images/readme/overlay-settings.png)](docs/images/readme/overlay-settings.png) |
+| **Extension management** | **General settings** |
+| [![Extension management](docs/images/readme/extension-management.png)](docs/images/readme/extension-management.png) | [![General settings](docs/images/readme/general-settings.png)](docs/images/readme/general-settings.png) |
+| **Encounter history** | **Runtime status** |
+| [![Encounter history](docs/images/readme/encounter-history.png)](docs/images/readme/encounter-history.png) | [![Runtime status](docs/images/readme/runtime-status.png)](docs/images/readme/runtime-status.png) |
+
+> These screenshots show the v0.3.9.0 interface. Later versions keep the same information structure, but wording, version numbers, and individual options may change. Select a thumbnail to view the full image.
+
+## Control Center
+
+| Page | What you can do there |
+| --- | --- |
+| Overview | Inspect parser state; toggle parsing, autostart, unfocused web-overlay hiding, and Simplified mode; open the meter, history, runtime status, and log directory |
+| Combat Meter | Select one of three mutually exclusive templates; customize the 8-player classic table, use fixed job/name + DPS/HPS rows for 24 players, and configure opacity or FFLogs where supported |
+| Overlays | Install Cactbot, manage alerts, timelines, and custom HTML overlays, and hide web overlays when the game is unfocused |
+| Extensions | Enable extensions, open their configuration, inspect sources and updates, import DLL/ZIP packages, and grant permissions |
+| Cloud Sync | Register or sign in, choose automatic sign-in, manage friend invitations, and upload, preview, restore, or roll back end-to-end encrypted configuration |
+| Settings | View the fixed Taiwan region, restart the parser, copy diagnostics, change language and shortcuts, or start a separately confirmed factory reset |
+
+The parser region is fixed to Taiwan, including after importing an old profile. Client language remains independent. FFLogs estimates use M5–M8 and the TW population; absent TW data never falls back to CN/global cached scores.
+
+## Common commands
+
+| Command | Action |
+| --- | --- |
+| `/actcompat` | Open or close the Control Center |
+| `/actcompat on` / `/actcompat off` | Explicitly open / close the Control Center |
+| `/actcompat meter` | Open and locate the Combat Meter |
+| `/actcompat simple on` / `/actcompat simple off` | Enter / leave Simplified mode; its home page only toggles the meter or exits the mode |
+| `/actcompat history` | Open recent encounters |
+| `/actcompat logs` | Open the saved log-file list |
+| `/actcompat status` | Inspect the parser and Host runtime state |
+| `/actcompat cactbot` | Open the selected Cactbot overlay |
+| `/actcompat overlay [template]` | Open the selected or named HTML overlay |
+| `/actcompat clear` | Clear the current encounter display without deleting history or raw logs |
+
+Diagnostic and development commands also include `/actcompat host`, `stop`, `sample`, `install "<DLL or ZIP path>"`, and `factory-reset`. An unknown subcommand opens the authoritative in-game command page.
+
+## Understanding combat data
+
+- **DPS** uses each player's own active action time.
+- **EncDPS** uses the full encounter duration, closer to the traditional whole-encounter ACT metric.
+- **rDPS** is estimated locally from combat events and party-buff attribution. It is not the authoritative FFLogs result.
+- **HPS** uses the full pull duration from engagement to end, including transitions and untargetable periods.
+- **Highest hit** keeps the largest single hit in the current encounter, replaces it only with a larger hit, and resets for the next encounter.
+- **FFLogs percentile estimate** applies the current encounter data to cached curves for immediate reference. It is not an uploaded parse ranking.
+- **`--`** means that no valid value is available yet; it does not mean zero.
+
+After combat ends, the live meter retains the previous result until meaningful data from the next pull replaces it from zero. Duty wipes follow the same rule. Encounter History keeps the whole duty visit in one folder and stores each pull as a separate child record. ACT segments created during phase transitions are merged internally instead of appearing as separate pulls.
+
+Reset current encounter ends and clears only the current display. It does not delete saved history or raw Network logs. Player-ID masking also changes only the UI and does not rewrite log contents.
+
+## Extensions, permissions, and restarts
+
+Enabling an extension and granting permissions are separate conditions. An enabled extension does not automatically have access to networking, file writes, game commands, native memory, or high-risk scripts.
+
+| Component | Runtime | First action after an update or failure |
+| --- | --- | --- |
+| Triggernometry, PostNamazu, ACT.FoxTTS, SilverDasher | Shared Host | `/actcompat status` → Restart shared Host |
+| User-imported ACT extensions | Generic Host | `/actcompat status` → Restart generic Host |
+| FFXIV_ACT_Plugin, OverlayPlugin | In-game parser | Control Center → Settings → Restart parser |
+
+Traditional ACT extensions run with the current Windows user's privileges. Separate Hosts prevent most extension crashes from directly terminating FFXIV, but they are not operating-system sandboxes. A malicious DLL in the same Host may still call desktop APIs or interfere with another extension. Install only trusted packages and grant only the permissions you need.
+
+See [Third-party ACT extension compatibility](docs/third-party-compatibility.md) for maintenance sources, bundled versions, installation models, and the currently verified scope.
+
+## Troubleshooting
+
+### `/actcompat` does nothing or is reported as unknown
+
+Open `/xlplugins` and confirm that Dalamud ACT Compat is installed, enabled, and has no load error. In this state, the plugin's own restart and diagnostics controls cannot work; resolve the Dalamud load error first.
+
+### The Combat Meter is missing or always empty
+
+1. Enter `/actcompat meter` and temporarily disable Auto hide out of combat.
+2. Confirm that the parser is Running on Overview and in `/actcompat status`.
+3. Deal several valid hits to a striking dummy or duty enemy. Entering a duty, selecting a target, or opening the window does not create combat data.
+4. If it remains empty, restart the parser and create a new sample encounter.
+
+### Only one extension, TTS, trigger, or marker feature fails
+
+Confirm that the extension itself is enabled and has the required permissions. Then use `/actcompat status` to restart only its assigned Host. Do not repeatedly reinstall downstream extensions while the parser is stopped.
+
+### An overlay shows its page but receives no combat data
+
+Loading a webpage does not mean its data protocol is connected. Confirm that the parser and OverlayPlugin are running, inspect the overlay's modern OverlayPlugin / ACTWS detection state, and select Detect again.
+
+### What to include in a bug report
+
+Provide the DACT version, occurrence time, reproduction steps, expected and actual behavior, the first failed component in `/actcompat status`, and the complete Copy diagnostics output. Missing or incorrect combat data also requires the matching `Network_*.log`. Review character names, server names, and local paths before sharing.
+
+## How it runs
+
+```text
+FFXIV / Dalamud process
+└─ Dalamud ACT Compat
+   ├─ FFXIV_ACT_Plugin + OverlayPlugin
+   ├─ Control Center, Combat Meter, history, and overlays
+   ├─ accounts, invitations, and locally encrypted cloud configuration sync
+   └─ bounded IPC
+      ├─ Shared Host: Triggernometry / PostNamazu / FoxTTS / SilverDasher
+      └─ Generic Host: compatible user-imported ACT extensions
+```
+
+The parser and OverlayPlugin remain in the game process so they can consume Dalamud data and render the UI directly. Traditional ACT extensions live in separate processes so they can be throttled, diagnosed, stopped, and restarted independently. IPC exposes defined messages and game-command operations instead of arbitrary function pointers.
+
+## Development and build
+
+Use Windows, .NET SDK 10, the .NET 9 Windows Desktop runtime and 7-Zip. The script verifies pinned Taiwan API 13 references and creates an independent candidate without updating the CN feed.
 
 ```powershell
+git clone --branch feature/taiwan-standalone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat.git
+cd DalamudActCompat
 ./tools/build-taiwan.ps1
 ```
 
-The script verifies pinned reference hashes, builds and runs offline checks, then writes `artifacts/taiwan/DalamudActCompat-TW-candidate.zip`. See `tools/taiwan-dependencies.lock.json` for sources and checksums, and the Chinese README for the full acceptance scope.
+See [Taiwan build notes](docs/taiwan-build.md) for sources, SHA-256 pins, test coverage and remaining in-game acceptance.
 
-The subscription feed is intentionally empty until a Taiwan release is validated. The old CN repair utility is not published from this branch. Native hooks, VFX, alliance layouts, SilverDasher FateInfo discovery and real FFLogs TW data still require target-client/service validation. No CN/global ranking population is substituted for Taiwan.
+## License
+
+Dalamud ACT Compat is distributed under [GPL-3.0](LICENSE.md). Bundled third-party components remain under their respective licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the `LICENSES/` directory in release archives.
