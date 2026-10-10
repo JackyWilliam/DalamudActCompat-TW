@@ -1,163 +1,163 @@
-# 独立 ACT Host：实现与安全边界
+# 獨立 ACT Host：實現與安全邊界
 
 更新日期：2026-07-31
 
-## 结论
+## 結論
 
-第二阶段采用混合架构。Triggernometry、PostNamazu、FoxTTS 和基于 manifest
-发现的传统 ACT 插件由 `DalamudActCompat.Host.exe` 加载；FFXIV 进程只保留
-Dalamud 数据采集、官方解析/Overlay 核心、ImGui 状态界面、IPC 客户端和经过
-验证的语义命令 Broker。
+第二階段採用混合架構。Triggernometry、PostNamazu、FoxTTS 和基於 manifest
+發現的傳統 ACT 外掛由 `DalamudActCompat.Host.exe` 載入；FFXIV 程序只保留
+Dalamud 資料採集、官方解析/Overlay 核心、ImGui 狀態介面、IPC 客戶端和經過
+驗證的語義命令 Broker。
 
-这解决的是现实中的故障域问题：传统插件死循环、WinForms 死锁、阻塞调用、
-未处理托管异常、Host 原生崩溃和 Host 内存失控不再与 FFXIV 共用进程。单纯把
-插件换到另一个线程不能提供这些保证，因为 .NET 不能安全终止任意失控线程，
-`Thread.Abort` 也不能恢复被破坏的锁/原生状态。
+這解決的是現實中的故障域問題：傳統外掛死迴圈、WinForms 死鎖、阻塞呼叫、
+未處理託管異常、Host 原生崩潰和 Host 記憶體失控不再與 FFXIV 共用程序。單純把
+外掛換到另一個執行緒不能提供這些保證，因為 .NET 不能安全終止任意失控執行緒，
+`Thread.Abort` 也不能恢復被破壞的鎖/原生狀態。
 
-## 进程与线程模型
+## 程序與執行緒模型
 
 ```text
 FFXIV / Dalamud
-├─ 游戏数据与官方解析/Overlay 核心
-├─ ImGui 状态/权限界面
+├─ 遊戲資料與官方解析/Overlay 核心
+├─ ImGui 狀態/許可權介面
 ├─ ActHostSupervisor + HostIpcClient
-└─ 白名单语义命令 Broker
+└─ 白名單語義命令 Broker
           │ current-user-only named pipes
           ▼
 DalamudActCompat.Host.exe
-├─ ACT/NotACT STA 消息循环
-├─ 每个传统插件的 STA WinForms 消息循环
+├─ ACT/NotACT STA 訊息迴圈
+├─ 每個傳統外掛的 STA WinForms 訊息迴圈
 ├─ Triggernometry / PostNamazu / FoxTTS
-├─ 有界 Clipboard STA 工作线程
+├─ 有界 Clipboard STA 工作執行緒
 └─ IPC reader / writer / heartbeat
 ```
 
-游戏 Framework Update 只发布非阻塞事件，不调用传统插件。日志先进入有界
-游戏侧队列，再按最多 128 条或 64 KiB 批量发送。Host reader 调用 ACT 回调；
-如果回调卡住，独立 heartbeat 仍会报告“已接收序列未前进”，游戏侧看门狗在
-5 秒后判定 Host 处理停滞并终止/重启 Host。
+遊戲 Framework Update 只發布非阻塞事件，不呼叫傳統外掛。日誌先進入有界
+遊戲側佇列，再按最多 128 條或 64 KiB 批次傳送。Host reader 呼叫 ACT 回撥；
+如果回撥卡住，獨立 heartbeat 仍會報告“已接收序列未前進”，遊戲側看門狗在
+5 秒後判定 Host 處理停滯並終止/重啟 Host。
 
-## IPC 协议 v2
+## IPC 協議 v2
 
-传输使用两条仅当前用户可访问的命名管道，分别承载 game-to-host 与
-host-to-game。帧为 4 字节长度前缀加 JSON，单帧最大 1 MiB。公共信封包含：
+傳輸使用兩條僅當前使用者可訪問的命名管道，分別承載 game-to-host 與
+host-to-game。幀為 4 位元組長度字首加 JSON，單幀最大 1 MiB。公共信封包含：
 
-- 协议版本、随机 session ID、单调 sequence；
-- 类型、优先级、创建时间和可选 deadline；
-- correlation ID 与类型化 payload。
+- 協議版本、隨機 session ID、單調 sequence；
+- 型別、優先順序、建立時間和可選 deadline；
+- correlation ID 與型別化 payload。
 
-游戏到 Host 支持握手、权限快照、日志批、区域、战斗开始/结束、打开插件 UI、
-关闭和仅测试构建启用的故障注入。Host 到游戏支持握手、心跳、健康/阶段状态、
-结构化诊断、命令请求、命令结果和关闭确认。未知 session、倒退 sequence、过期
-deadline、超长帧和未知命令均拒绝。
+遊戲到 Host 支援握手、許可權快照、日誌批、區域、戰鬥開始/結束、開啟外掛 UI、
+關閉和僅測試構建啟用的故障注入。Host 到遊戲支援握手、心跳、健康/階段狀態、
+結構化診斷、命令請求、命令結果和關閉確認。未知 session、倒退 sequence、過期
+deadline、超長幀和未知命令均拒絕。
 
-协议不传递函数地址、内存地址、任意程序集、任意命令行、PowerShell 或脚本。
+協議不傳遞函式地址、記憶體地址、任意程式集、任意命令列、PowerShell 或指令碼。
 
-## 队列与背压
+## 佇列與背壓
 
-| 队列 | 容量 | 满载策略 | 保证 |
+| 佇列 | 容量 | 滿載策略 | 保證 |
 | --- | ---: | --- | --- |
-| IPC 控制/关键 | 256 | 拒绝新项并记录；关键区域/战斗状态保留最新副本供重连重放 | 单连接内保序，不声称断电式持久可靠 |
-| IPC 数据 | 8192 | 丢弃最旧低优先级项，累计 drop 计数 | 保留剩余日志顺序 |
-| 游戏侧待发送日志 | 8192 | 丢弃最旧日志 | 每批 128 条/64 KiB，20 ms flush |
-| NotACT 日志 | 8192 | 丢弃最旧并按 2 的幂次限流告警 | 有界内存 |
-| NotACT combat action | 4096 | 丢弃最旧并计数 | 有界内存 |
-| Triggernometry event | 8192 | 丢弃最旧并限流告警 | 通过 Adapter 修补上游无界队列 |
-| Clipboard | 8 | 拒绝新请求 | 最多 200,000 项、8 MiB 文本 |
-| 游戏侧命令 Broker | 64 | 拒绝并返回 `busy` | 单消费者，禁止按请求无限 `Task.Run` |
+| IPC 控制/關鍵 | 256 | 拒絕新項並記錄；關鍵區域/戰鬥狀態保留最新副本供重連重放 | 單連線內保序，不聲稱斷電式持久可靠 |
+| IPC 資料 | 8192 | 丟棄最舊低優先順序項，累計 drop 計數 | 保留剩餘日誌順序 |
+| 遊戲側待傳送日誌 | 8192 | 丟棄最舊日誌 | 每批 128 條/64 KiB，20 ms flush |
+| NotACT 日誌 | 8192 | 丟棄最舊並按 2 的冪次限流告警 | 有界記憶體 |
+| NotACT combat action | 4096 | 丟棄最舊並計數 | 有界記憶體 |
+| Triggernometry event | 8192 | 丟棄最舊並限流告警 | 透過 Adapter 修補上游無界佇列 |
+| Clipboard | 8 | 拒絕新請求 | 最多 200,000 項、8 MiB 文字 |
+| 遊戲側命令 Broker | 64 | 拒絕並返回 `busy` | 單消費者，禁止按請求無限 `Task.Run` |
 
-状态型消息只保留最新值。控制事件不与高频日志共用数据容量；断线后只重放最新
-区域和战斗状态，旧日志不无限缓存。
+狀態型訊息只保留最新值。控制事件不與高頻日誌共用資料容量；斷線後只重放最新
+區域和戰鬥狀態，舊日誌不無限快取。
 
-## 看门狗与熔断
+## 看門狗與熔斷
 
-- heartbeat 每秒一次；3 秒无心跳进入 suspect，5 秒无心跳判死；
-- heartbeat 存活但 Host 的 last-received sequence 5 秒不前进，同样判死；
-- working set 超过 1.5 GiB 或线程超过 256，判为 Host 故障；
-- 自动重启使用 1、2、5 秒退避；10 分钟内超过三次失败打开总熔断，等待手动恢复；
-- 手动停止会取消已计划的自动重启，手动重启会清除失败历史；
-- ACT 回调记录完成次数、异常、慢调用、当前执行项和持续时间；连续 5 次异常或
-  连续 3 次超过 2 秒时打开回调熔断；
-- 诊断按错误指纹保留累计次数，只发前 3 次和后续 2 的幂次，防止刷屏；
-- Host 终止只影响兼容 Host，FFXIV 与 Dalamud 不退出。
+- heartbeat 每秒一次；3 秒無心跳進入 suspect，5 秒無心跳判死；
+- heartbeat 存活但 Host 的 last-received sequence 5 秒不前進，同樣判死；
+- working set 超過 1.5 GiB 或執行緒超過 256，判為 Host 故障；
+- 自動重啟使用 1、2、5 秒退避；10 分鐘內超過三次失敗開啟總熔斷，等待手動恢復；
+- 手動停止會取消已計劃的自動重啟，手動重啟會清除失敗歷史；
+- ACT 回撥記錄完成次數、異常、慢呼叫、當前執行項和持續時間；連續 5 次異常或
+  連續 3 次超過 2 秒時開啟回撥熔斷；
+- 診斷按錯誤指紋保留累計次數，只發前 3 次和後續 2 的冪次，防止刷屏；
+- Host 終止隻影響相容 Host，FFXIV 與 Dalamud 不退出。
 
-进程内回调熔断只能阻止“下一次”调用，不能抢占已经死循环的线程；抢占由游戏侧
-终止整个 Host 进程完成。若将来要求某一个恶意插件不能拖死同 Host 的其它插件，
-必须继续拆为每插件/信任域一个 Worker 进程。
+程序內回撥熔斷只能阻止“下一次”呼叫，不能搶佔已經死迴圈的執行緒；搶佔由遊戲側
+終止整個 Host 程序完成。若將來要求某一個惡意外掛不能拖死同 Host 的其它外掛，
+必須繼續拆為每外掛/信任域一個 Worker 程序。
 
-## 权限与命令边界
+## 許可權與命令邊界
 
-权限按插件和能力保存，可在设置中撤销：日志读取、本地配置、TTS、Clipboard、
-网络、启动外部程序、文件写入、游戏命令、原生游戏内存和高风险脚本。默认只允许
-日志、本地配置、TTS 与 Clipboard；网络、进程、写入、游戏命令、原生内存和脚本
-默认拒绝。授权判断和允许/拒绝的 Broker 调用都会写审计日志。
+許可權按外掛和能力儲存，可在設定中撤銷：日誌讀取、本地配置、TTS、Clipboard、
+網路、啟動外部程式、檔案寫入、遊戲命令、原生遊戲記憶體和高風險指令碼。預設只允許
+日誌、本地配置、TTS 與 Clipboard；網路、程序、寫入、遊戲命令、原生記憶體和指令碼
+預設拒絕。授權判斷和允許/拒絕的 Broker 呼叫都會寫審計日誌。
 
-Triggernometry 的 TTS 请求先由游戏侧按插件身份、能力和 2 秒 deadline 授权，实际
-FoxTTS 回调只在独立 Host 内执行。最多保留 64 个待授权请求；无输出提供者、过期、
-拒绝或队列满都会显式失败。FoxTTS 卡死会阻塞 Host 的处理进度并触发进程级恢复，
-不会把第三方音频回调带回 FFXIV 进程。
+Triggernometry 的 TTS 請求先由遊戲側按外掛身份、能力和 2 秒 deadline 授權，實際
+FoxTTS 回撥只在獨立 Host 內執行。最多保留 64 個待授權請求；無輸出提供者、過期、
+拒絕或佇列滿都會顯式失敗。FoxTTS 卡死會阻塞 Host 的處理進度並觸發程序級恢復，
+不會把第三方音訊回撥帶回 FFXIV 程序。
 
-当前游戏侧只接受：
+當前遊戲側只接受：
 
-- `triggernometry` 的有界文本 `tts`；
-- `postnamazu` 的单条、长度受限、无换行、斜杠开头的语义聊天命令。
+- `triggernometry` 的有界文字 `tts`；
+- `postnamazu` 的單條、長度受限、無換行、斜槓開頭的語義聊天命令。
 
-PostNamazu 的任意地址 read/write/`calli` 和旧 GreyMagic 入口在外部 Host 中明确
-抛出“不支持”，不会降级为假成功。即便用户授权游戏命令，参数仍需再次验证，并
-有 2 秒 deadline/cancellation；超时后的 Framework 回调会再次检查取消状态，避免
-迟到副作用。
+PostNamazu 的任意地址 read/write/`calli` 和舊 GreyMagic 入口在外部 Host 中明確
+丟擲“不支援”，不會降級為假成功。即便使用者授權遊戲命令，引數仍需再次驗證，並
+有 2 秒 deadline/cancellation；超時後的 Framework 回撥會再次檢查取消狀態，避免
+遲到副作用。
 
-限制：同一 Host 内仍是完全信任的 .NET 代码。恶意插件可以绕过托管 Broker 直接
-访问桌面 API，也可能伪造另一个插件的逻辑身份。严格来源隔离需要独立受限 Worker、
-受限令牌或 AppContainer；现阶段 UI 明确显示这一点，不把能力开关宣传为 OS 沙箱。
+限制：同一 Host 內仍是完全信任的 .NET 程式碼。惡意外掛可以繞過託管 Broker 直接
+訪問桌面 API，也可能偽造另一個外掛的邏輯身份。嚴格來源隔離需要獨立受限 Worker、
+受限令牌或 AppContainer；現階段 UI 明確顯示這一點，不把能力開關宣傳為 OS 沙箱。
 
 ## Triggernometry Adapter
 
-- 管理员检测保留真实结果；普通权限时改为说明可用的日志、区域、战斗、正则、
-  配置、Clipboard 和 Broker TTS 能力，不伪造管理员身份；
-- 高风险脚本、网络仓库更新与外部进程启动分别经过权限检查；
-- `Thread.Abort` 被替换为结构化“线程未停止”报告，由 supervisor 结束 Host；
-- 上游两个无界事件 enqueue 改为 8192 项 drop-oldest；
-- 原版 `DataSubscription.ZoneChanged` 在 event-only facade 中不存在，专属 Adapter
-  注册/注销区域监听，传递真实 territory ID/zone name 并更新区域限制；
-- 内部 Error 日志每秒采样，按 timestamp/message 去重并输出结构化诊断。上游只保留
-  message 时，stack 明确标注“上游未保存”，不伪造堆栈。
+- 管理員檢測保留真實結果；普通許可權時改為說明可用的日誌、區域、戰鬥、正則、
+  配置、Clipboard 和 Broker TTS 能力，不偽造管理員身份；
+- 高風險指令碼、網路倉庫更新與外部程序啟動分別經過許可權檢查；
+- `Thread.Abort` 被替換為結構化“執行緒未停止”報告，由 supervisor 結束 Host；
+- 上游兩個無界事件 enqueue 改為 8192 項 drop-oldest；
+- 原版 `DataSubscription.ZoneChanged` 在 event-only facade 中不存在，專屬 Adapter
+  註冊/登出區域監聽，傳遞真實 territory ID/zone name 並更新區域限制；
+- 內部 Error 日誌每秒取樣，按 timestamp/message 去重並輸出結構化診斷。上游只保留
+  message 時，stack 明確標註“上游未儲存”，不偽造堆疊。
 
-## PostNamazu Adapter 与阶段状态
+## PostNamazu Adapter 與階段狀態
 
-| 阶段 | 当前状态 | 说明 |
+| 階段 | 當前狀態 | 說明 |
 | --- | --- | --- |
-| 程序集加载 | 成功/失败实时显示 | 验证真实 DLL 路径 |
-| `InitPlugin` | 成功 | 外部 STA WinForms Host 已加载真实插件 |
-| ACT Host / Host IPC | 成功 | NotACT 与 v2 命名管道均已初始化 |
-| FFXIV_ACT_Plugin 发现 | 成功 | 提供官方类型身份的 event-only facade |
-| Triggernometry 发现 | 成功或失败实时显示 | 在 PostNamazu 初始化前加入 ACT 插件列表 |
-| OverlayPlugin 发现 | 未实现 | Overlay 留在游戏侧，不把完整 DLL 暴露给不可信 Host |
-| 游戏进程识别 | 未实现（安全限制） | 不暴露 raw `Process`、内存或注入入口 |
-| 命令桥 | 成功 | 只提供白名单语义 Broker；旧 native 调用明确失败 |
-| 日志系统 | 成功 | 走有界 ACT 日志批 |
-| 命令发送测试 | 未测试 | 必须在游戏运行且用户明确授权后逐动作验证 |
-| 卸载测试 | Host 退出时记录 | `DeInitPlugin` 有界等待；卡住则终止 Host |
+| 程式集載入 | 成功/失敗實時顯示 | 驗證真實 DLL 路徑 |
+| `InitPlugin` | 成功 | 外部 STA WinForms Host 已載入真實外掛 |
+| ACT Host / Host IPC | 成功 | NotACT 與 v2 命名管道均已初始化 |
+| FFXIV_ACT_Plugin 發現 | 成功 | 提供官方型別身份的 event-only facade |
+| Triggernometry 發現 | 成功或失敗實時顯示 | 在 PostNamazu 初始化前加入 ACT 外掛列表 |
+| OverlayPlugin 發現 | 未實現 | Overlay 留在遊戲側，不把完整 DLL 暴露給不可信 Host |
+| 遊戲程序識別 | 未實現（安全限制） | 不暴露 raw `Process`、記憶體或注入入口 |
+| 命令橋 | 成功 | 只提供白名單語義 Broker；舊 native 呼叫明確失敗 |
+| 日誌系統 | 成功 | 走有界 ACT 日誌批 |
+| 命令傳送測試 | 未測試 | 必須在遊戲執行且使用者明確授權後逐動作驗證 |
+| 解除安裝測試 | Host 退出時記錄 | `DeInitPlugin` 有界等待；卡住則終止 Host |
 
-“复制日志”的旧阻塞点是 PostNamazu UI 线程上的日志遍历、字符串拼接和最多 10 次
-Clipboard 重试。Adapter 现在只在 UI 线程快照最多 200,000 项；字符串构建与最多
-5 次、总等待有界的 Clipboard 操作在容量 8 的专用 STA 队列执行。失败不会永久锁住
-PostNamazu UI，更不会阻塞 FFXIV。
+“複製日誌”的舊阻塞點是 PostNamazu UI 執行緒上的日誌遍歷、字串拼接和最多 10 次
+Clipboard 重試。Adapter 現在只在 UI 執行緒快照最多 200,000 項；字串構建與最多
+5 次、總等待有界的 Clipboard 操作在容量 8 的專用 STA 佇列執行。失敗不會永久鎖住
+PostNamazu UI，更不會阻塞 FFXIV。
 
-## 已自动验证
+## 已自動驗證
 
-- Host 握手、版本/session/sequence、任意命令拒绝和正常关闭；
-- Host 直接 kill、客户端断管、Host reader 阻塞 30 秒时游戏侧测试继续前进；
-- 控制队列溢出拒绝、数据队列 drop-oldest、状态压缩；
-- NotACT 日志/combat action 队列上限；
-- 连续异常打开单回调熔断；
-- 真实 Triggernometry DLL 初始化与配置读取；
-- 标准日志与 FFXIV 网络等价事件分别正则命中，完成游戏侧 TTS 授权并调度到
-  Host 测试输出提供者；
-- 区域变化更新区域限制后命中；
-- 战斗开始/结束事件分别命中；
-- Triggernometry、PostNamazu、FoxTTS 外部加载和 Host 正常退出。
+- Host 握手、版本/session/sequence、任意命令拒絕和正常關閉；
+- Host 直接 kill、客戶端斷管、Host reader 阻塞 30 秒時遊戲側測試繼續前進；
+- 控制佇列溢位拒絕、資料佇列 drop-oldest、狀態壓縮；
+- NotACT 日誌/combat action 佇列上限；
+- 連續異常開啟單回撥熔斷；
+- 真實 Triggernometry DLL 初始化與配置讀取；
+- 標準日誌與 FFXIV 網路等價事件分別正則命中，完成遊戲側 TTS 授權並排程到
+  Host 測試輸出提供者；
+- 區域變化更新區域限制後命中；
+- 戰鬥開始/結束事件分別命中；
+- Triggernometry、PostNamazu、FoxTTS 外部載入和 Host 正常退出。
 
-仍需游戏运行后验证：重复打开/关闭真实 UI、实际 TTS 音频、PostNamazu 每一条允许
-命令、Host 被任务管理器结束后的 UI 恢复、退出游戏后的孤儿进程清理，以及真实战斗
-高峰下的积压/内存曲线。
+仍需遊戲執行後驗證：重複開啟/關閉真實 UI、實際 TTS 音訊、PostNamazu 每一條允許
+命令、Host 被工作管理員結束後的 UI 恢復、退出遊戲後的孤兒程序清理，以及真實戰鬥
+高峰下的積壓/記憶體曲線。

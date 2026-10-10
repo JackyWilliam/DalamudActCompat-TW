@@ -1,23 +1,23 @@
-# Dalamud ACT Compat 台服独立构建
+# Dalamud ACT Compat 台服獨立構建
 
-台服在独立仓库 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW) 的 `main` 维护，使用台服 API 13 / .NET 9 依赖链。当前产物为待游戏内验收的候选包，不向现有国服订阅源发布。
+台服在獨立倉庫 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW) 的 `main` 維護，使用台服 API 13 / .NET 9 依賴鏈。當前產物為待遊戲內驗收的候選包，不向現有國服訂閱源釋出。
 
-## 范围
+## 範圍
 
-保留战斗解析与统计、历史、Cactbot、HTML 悬浮窗与快捷键、PictoACT 绘图、Host、Triggernometry、PostNamazu、FoxTTS、SilverDasher、自行导入兼容扩展、账号与云同步、好友与聊天、皮肤及六种界面语言。按用户要求，未找到台服适配的 Matcha 不随包提供，也不会从旧配置自动启用。
+保留戰鬥解析與統計、歷史、Cactbot、HTML 懸浮窗與快捷鍵、PictoACT 繪圖、Host、Triggernometry、PostNamazu、FoxTTS、SilverDasher、自行匯入相容擴充套件、帳號與雲同步、好友與聊天、皮膚及六種介面語言。按使用者要求，未找到台服適配的 Matcha 不隨包提供，也不會從舊配置自動啟用。
 
-默认界面为简体中文，首次启动和恢复默认设置均使用简体；已保存的语言选择仍保留。解析区固定台服，导入旧配置不能改变底层区域。FFLogs 采用台服当前中量级 M5–M8 地图表及 TW 查询范围；缺少台服样本时不借用 CN/Global 缓存。在线样本是否可用仍取决于 FFLogs 服务。
+預設介面為繁體中文，首次啟動和恢復預設設定均使用繁體；已儲存的語言選擇仍保留。解析區固定台服，匯入舊配置不能改變底層區域。FFLogs 採用台服當前中量級 M5–M8 地圖表及 TW 查詢範圍；缺少台服樣本時不借用 CN/Global 快取。線上樣本是否可用仍取決於 FFLogs 服務。
 
-## 来源与构建
+## 來源與構建
 
-- DACT 修改后的 IINACT 独立保存在 [IINACT-TW](https://github.com/JackyWilliam/IINACT-TW)，子模块按提交固定，不依赖原 DACT/IINACT 仓库的功能分支。
-- 台服 IINACT：PlusoneChiang/IINACT `tc/api13_net9`，起点 `0788c177c5df622c9e20c4f00027b873732b5606`。
+- DACT 修改後的 IINACT 獨立儲存在 [IINACT-TW](https://github.com/JackyWilliam/IINACT-TW)，子模組按提交固定，不依賴原 DACT/IINACT 倉庫的功能分支。
+- 台服 IINACT：PlusoneChiang/IINACT `tc/api13_net9`，起點 `0788c177c5df622c9e20c4f00027b873732b5606`。
 - Machina：`3cc6e1c50c28ea81d95a05e2b4bf4329ffac0b44`。
-- Dalamud：yanmucorp 13.0.0.16，游戏版本 `2026.09.14.0000.0000`。
-- FFXIV_ACT_Plugin 3.0.3.1、Unscrambler 7.41.1；完整来源与 SHA-256 见 `tools/taiwan-dependencies.lock.json`。
-- DACT 界面、嵌入式 ACT 与 Host 功能在台服上游分支中重新合入，原工作目录保持不变。
+- Dalamud：yanmucorp 13.0.0.16，遊戲版本 `2026.09.14.0000.0000`。
+- FFXIV_ACT_Plugin 3.0.3.1、Unscrambler 7.41.1；完整來源與 SHA-256 見 `tools/taiwan-dependencies.lock.json`。
+- DACT 介面、嵌入式 ACT 與 Host 功能在台服上游分支中重新合入，原工作目錄保持不變。
 
-安装 .NET SDK 10（用于 slnx）、.NET 9 Windows Desktop 运行库与 7-Zip，并递归检出子模块：
+安裝 .NET SDK 10（用於 slnx）、.NET 9 Windows Desktop 執行庫與 7-Zip，並遞迴檢出子模組：
 
 ```powershell
 git clone --recurse-submodules https://github.com/JackyWilliam/DalamudActCompat-TW.git
@@ -27,14 +27,14 @@ cd DalamudActCompat-TW
 ./tools/build-taiwan.ps1 -ReferenceDirectory 'X:/tw-dalamud'
 ```
 
-脚本验证引用哈希、构建完整解决方案、运行离线 smoke，并生成 `artifacts/taiwan/DalamudActCompat-TW-candidate.zip` 与 SHA-256。API 13 模块和 Host 均面向 .NET 9；打包工具版本不代表游戏运行时 API。
+指令碼驗證引用雜湊、構建完整解決方案、執行離線 smoke，並生成 `artifacts/taiwan/DalamudActCompat-TW-candidate.zip` 與 SHA-256。API 13 模組和 Host 均面向 .NET 9；打包工具版本不代表遊戲執行時 API。
 
-`repo/pluginmaster.json` 暂为空，避免候选版误导向国服安装包。正式台服订阅需在游戏内验收后单独发布。历史国服版本修复工具不会从台服仓库分发，它的内置 API 15 修复包不适用于台服。
+`repo/pluginmaster.json` 暫為空，避免候選版誤導向國服安裝包。正式台服訂閱需在遊戲內驗收後單獨釋出。歷史國服版本修復工具不會從台服倉庫分發，它的內建 API 15 修復包不適用於台服。
 
-## 验证边界
+## 驗證邊界
 
-离线覆盖真实 ACT/Triggernometry/SilverDasher 加载、台服报文布局与操作码、Host 传递、Cactbot 配置、快捷键、绘图回放与加速循环，以及皮肤/语言原生布局矩阵。Host 测试每次复制独立扩展目录，避免 Triggernometry 独占语言 XML 导致并行测试弹窗。
+離線覆蓋真實 ACT/Triggernometry/SilverDasher 載入、台服報文佈局與操作碼、Host 傳遞、Cactbot 配置、快捷鍵、繪圖回放與加速迴圈，以及皮膚/語言原生布局矩陣。Host 測試每次複製獨立擴充套件目錄，避免 Triggernometry 獨佔語言 XML 導致並行測試彈窗。
 
-没有把离线成功当作游戏内验收。仍需台服实际客户端验证封包 hook、原生 VFX、24 人队伍布局与 SilverDasher FateInfo 动态识别。FateInfo 读取以三个已发布台服操作码交叉校验，失败时保留未知值并记录日志，不猜用其他区操作码。FFLogs 真实 TW 在线数据也未做账户授权查询验证。
+沒有把離線成功當作遊戲內驗收。仍需台服實際客戶端驗證封包 hook、原生 VFX、24 人隊伍佈局與 SilverDasher FateInfo 動態識別。FateInfo 讀取以三個已釋出台服操作碼交叉校驗，失敗時保留未知值並記錄日誌，不猜用其他區操作碼。FFLogs 真實 TW 線上資料也未做帳戶授權查詢驗證。
 
-版权与许可见 `LICENSE.md`、`THIRD_PARTY_NOTICES.md` 及包内 `LICENSES/`。
+版權與許可見 `LICENSE.md`、`THIRD_PARTY_NOTICES.md` 及包內 `LICENSES/`。

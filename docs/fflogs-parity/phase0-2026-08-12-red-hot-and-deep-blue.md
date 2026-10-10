@@ -35,11 +35,11 @@ The phase labels below are observational labels. No FFLogs phase name is asserte
 
 | Observed phase | Target | Start | End | Seconds | Relationship |
 |---|---|---|---|---:|---|
-| observed-transition-1 | 炽红 (`40018738`) | `21:26:44.450` | `21:27:52.542` | 68.092 | Contains a shorter 深蓝 downtime |
-| observed-transition-2 | 深蓝 (`40018739`) | `21:27:00.591` | `21:27:11.776` | 11.185 | Both targets unavailable; already inside transition-1 |
-| observed-transition-3 | 炽红 (`40018738`) | `21:28:02.481` | `21:28:17.942` | 15.461 | Both targets unavailable |
-| observed-transition-4 | 深蓝 (`40018739`) | `21:28:02.481` | `21:28:17.942` | 15.461 | Both targets unavailable |
-| observed-transition-5 | 深蓝 (`40018739`) | `21:28:42.897` | `21:28:54.089` | 11.192 | 炽红 remains available |
+| observed-transition-1 | 熾紅 (`40018738`) | `21:26:44.450` | `21:27:52.542` | 68.092 | Contains a shorter 深藍 downtime |
+| observed-transition-2 | 深藍 (`40018739`) | `21:27:00.591` | `21:27:11.776` | 11.185 | Both targets unavailable; already inside transition-1 |
+| observed-transition-3 | 熾紅 (`40018738`) | `21:28:02.481` | `21:28:17.942` | 15.461 | Both targets unavailable |
+| observed-transition-4 | 深藍 (`40018739`) | `21:28:02.481` | `21:28:17.942` | 15.461 | Both targets unavailable |
+| observed-transition-5 | 深藍 (`40018739`) | `21:28:42.897` | `21:28:54.089` | 11.192 | 熾紅 remains available |
 
 Current union intervals are `68.092 + 15.461 + 11.192 = 94.745s`. Simultaneous all-target downtime is `11.185 + 15.461 = 26.646s`. The `68.092s` interval is counted once in the union, not once per target.
 
@@ -64,14 +64,14 @@ FFLogs exact actor amounts are unavailable. The delta bounds below combine the s
 
 | Actor | Job | DACT damage | DACT hits | Crit | Crit+Direct | FFLogs Active | DACT − FFLogs damage interval |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 西卡利亚 | SMN | 14,859,765 | 299 | 79 | 29 | 89.33% | +108,745 … +110,656 |
+| 西卡利亞 | SMN | 14,859,765 | 299 | 79 | 29 | 89.33% | +108,745 … +110,656 |
 | 笙夜之歌 | RPR | 11,648,123 | 322 | 53 | 15 | 91.19% | +309,668 … +311,145 |
-| 唐酥饼 | DNC | 11,373,833 | 307 | 98 | 28 | 88.69% | +473,153 … +474,574 |
+| 唐酥餅 | DNC | 11,373,833 | 307 | 98 | 28 | 88.69% | +473,153 … +474,574 |
 | 伊斑斑 | SMN | 9,751,241 | 329 | 64 | 17 | 89.98% | +64,743 … +66,010 |
-| 黛朵洛·彼缪 | PLD | 9,673,664 | 423 | 101 | 1 | 91.34% | +106,243 … +107,494 |
+| 黛朵洛·彼繆 | PLD | 9,673,664 | 423 | 101 | 1 | 91.34% | +106,243 … +107,494 |
 | 埃斯蒂尼安丿 | PLD | 8,279,152 | 398 | 111 | 26 | 91.14% | +153,077 … +154,145 |
 | Migi | SGE | 7,806,604 | 284 | 73 | 12 | 89.75% | +27,684 … +28,709 |
-| 阕寒猫 | WHM | 7,068,892 | 318 | 53 | 0 | 89.51% | +282,837 … +283,735 |
+| 闋寒貓 | WHM | 7,068,892 | 318 | 53 | 0 | 89.51% | +282,837 … +283,735 |
 
 DACT `ActorActiveTime` cannot be reconstructed honestly from the historical aggregate file. FFLogs Active percentages are retained as reference values only. The live Phase 0 recorder reports an explicitly labelled first-to-last included-damage span until FFLogs' active-time state machine can be verified.
 

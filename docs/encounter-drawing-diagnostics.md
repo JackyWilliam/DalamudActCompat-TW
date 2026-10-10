@@ -1,65 +1,65 @@
-# 绝伊甸、绝妖星绘图诊断
+# 絕伊甸、絕妖星繪圖診斷
 
-Host 对 Triggernometry 2.2 的原始执行流程增加被动观察，不修改订阅 XML、开关、
-变量、条件或动作顺序，也不增加等待或重试。原有 U7b 初始化时序补丁保留。
+Host 對 Triggernometry 2.2 的原始執行流程增加被動觀察，不修改訂閱 XML、開關、
+變數、條件或動作順序，也不增加等待或重試。原有 U7b 初始化時序補丁保留。
 
-启动时 `DACT_DRAW_DIAG_READY` 表示这些观察器已装入。详细记录以
-`DACT_DRAW_DIAG ` 加单行 JSON 输出，由现有 Host 日志通道写入 `dalamud.log`。
-仅在地图 1238 / 1363 且有 ReadCombatLogs 权限时收集。节点按祖先名称
-U7a / U7b 识别；重命名了整组前缀的自定义版本不在本轮节点观察范围内。
-旧 TN ABI 保持原流程，启动记录 `DACT_DRAW_DIAG_UNAVAILABLE`。
+啟動時 `DACT_DRAW_DIAG_READY` 表示這些觀察器已裝入。詳細記錄以
+`DACT_DRAW_DIAG ` 加單行 JSON 輸出，由現有 Host 日誌通道寫入 `dalamud.log`。
+僅在地圖 1238 / 1363 且有 ReadCombatLogs 許可權時收集。節點按祖先名稱
+U7a / U7b 識別；重新命名了整組字首的自定義版本不在本輪節點觀察範圍內。
+舊 TN ABI 保持原流程，啟動記錄 `DACT_DRAW_DIAG_UNAVAILABLE`。
 
-| stage | 可以确认的事情 |
+| stage | 可以確認的事情 |
 |---|---|
-| received / queued | Host 收到的原始日志、进入 TN 队列的日志；通过时间与 actor Key 关联转换前后 |
-| inventory / node-config | TN/Host 程序集版本、注册回调数、相关节点是否启用、父级是否启用、来源与订阅权限限制 |
-| match | 原正则确实匹配，并附当时的重触发冷却状态 |
-| folder-filter | 原目录过滤函数的结果，没有额外重新计算条件 |
-| condition-blocked / fire-return | 原节点条件是否阻止执行，以及动作是否接受排队/延后执行 |
-| action-enter / action-return | 原动作进入和返回、动作序号、原动作结果与前后关键变量 |
-| callback-enter / callback-return / callback-throw | 实际回调名、注册数、解析后的数值参数、返回或异常 |
-| entity-change | 最近相关 actor 从缺失到就绪、地址/BNpcID 变化或消失 |
-| exception / observer-error | 原节点/动作异常；诊断观察器自身异常（不会阻断原动作） |
+| received / queued | Host 收到的原始日誌、進入 TN 佇列的日誌；透過時間與 actor Key 關聯轉換前後 |
+| inventory / node-config | TN/Host 程式集版本、註冊回撥數、相關節點是否啟用、父級是否啟用、來源與訂閱許可權限制 |
+| match | 原正則確實匹配，並附當時的重觸發冷卻狀態 |
+| folder-filter | 原目錄過濾函式的結果，沒有額外重新計算條件 |
+| condition-blocked / fire-return | 原節點條件是否阻止執行，以及動作是否接受排隊/延後執行 |
+| action-enter / action-return | 原動作進入和返回、動作序號、原動作結果與前後關鍵變數 |
+| callback-enter / callback-return / callback-throw | 實際回撥名、註冊數、解析後的數值引數、返回或異常 |
+| entity-change | 最近相關 actor 從缺失到就緒、地址/BNpcID 變化或消失 |
+| exception / observer-error | 原節點/動作異常；診斷觀察器自身異常（不會阻斷原動作） |
 
-`event.Key` 用原日志时间和 actor 关联；`event.DigestValue` 区分同一时间的不同事件。
-每次上下文有 `contextId`，每次调用有 `callId`，可串联延迟动作。
-状态包括 Host 实体快照的存在性、地址、BNpcID、快照年龄，游戏进程是否已登记，
-原生/命令权限，以及 U7a 光轮、U7b P1 冰火散摊、myIdx 等限定变量和光轮开关。
-快照状态属于 Host 已收到的数据，不等于额外读取了游戏内存；不主动初始化鲶鱼精，
-也不额外扫描内存。连接或扫描失败仍结合原鲶鱼精启动日志及回调异常判断。
+`event.Key` 用原日誌時間和 actor 關聯；`event.DigestValue` 區分同一時間的不同事件。
+每次上下文有 `contextId`，每次呼叫有 `callId`，可串聯延遲動作。
+狀態包括 Host 實體快照的存在性、地址、BNpcID、快照年齡，遊戲程序是否已登記，
+原生/命令許可權，以及 U7a 光輪、U7b P1 冰火散攤、myIdx 等限定變數和光輪開關。
+快照狀態屬於 Host 已收到的資料，不等於額外讀取了遊戲記憶體；不主動初始化鯰魚精，
+也不額外掃描記憶體。連線或掃描失敗仍結合原鯰魚精啟動日誌及回撥異常判斷。
 
-`registered=0` 表示未注册的静默调用；`-1` 表示暂时无法读取注册表。
-`callback-return` 只表示处理函数返回，不能证明游戏已渲染；动作返回也不能覆盖同一
-上下文的异常记录。`acceptedOrDeferred=true` 可包含等待互斥锁，不表示绘图已经完成。
-变量 null 表示该项缺失；`unavailable-or-busy` 表示无法在不阻塞原线程的前提下采样。
+`registered=0` 表示未註冊的靜默呼叫；`-1` 表示暫時無法讀取登錄檔。
+`callback-return` 只表示處理函式返回，不能證明遊戲已渲染；動作返回也不能覆蓋同一
+上下文的異常記錄。`acceptedOrDeferred=true` 可包含等待互斥鎖，不表示繪圖已經完成。
+變數 null 表示該項缺失；`unavailable-or-busy` 表示無法在不阻塞原執行緒的前提下采樣。
 
-每分钟分别限额：120 条接收/入队事件、600 条节点/回调/状态记录、60 条错误记录。
-原始事件洪流不会耗尽节点或错误预算。下一窗口首条记录携带
-`suppressedSincePreviousWindow`；预算耗尽期间不能用“没有日志”证明“没有触发”。
-节点清单最多每分钟一次、最多 48 个相关节点；实体跟踪最多 64 个、保留 30 秒。
-NPC 生成/读条过滤玩家施法噪声，仍保留玩家点名和状态事件。无完整聊天、原始日志文本
-或任意绘图参数转储；原生地址/数值 CSV 记录原值，其他绘图参数只记长度与摘要。
+每分鐘分別限額：120 條接收/入隊事件、600 條節點/回撥/狀態記錄、60 條錯誤記錄。
+原始事件洪流不會耗盡節點或錯誤預算。下一視窗首條記錄攜帶
+`suppressedSincePreviousWindow`；預算耗盡期間不能用“沒有日誌”證明“沒有觸發”。
+節點清單最多每分鐘一次、最多 48 個相關節點；實體跟蹤最多 64 個、保留 30 秒。
+NPC 生成/讀條過濾玩家施法噪聲，仍保留玩家點名和狀態事件。無完整聊天、原始日誌文字
+或任意繪圖引數轉儲；原生地址/數值 CSV 記錄原值，其他繪圖引數只記長度與摘要。
 
-## 取证方式
+## 取證方式
 
-1. 使用诊断版启动游戏，检查 `DACT_DRAW_DIAG_READY`，保留同次启动的初始化日志。
-2. 进入对应副本正常触发机制。缺圈时记录大概时间、阶段和缺失效果。
-3. 保留该次 `dalamud.log`（若轮转则一并保留相关旧文件），对照上述 stage 查断点。
+1. 使用診斷版啟動遊戲，檢查 `DACT_DRAW_DIAG_READY`，保留同次啟動的初始化日誌。
+2. 進入對應副本正常觸發機制。缺圈時記錄大概時間、階段和缺失效果。
+3. 保留該次 `dalamud.log`（若輪轉則一併保留相關舊檔案），對照上述 stage 查斷點。
 
-这份补丁增强取证，不宣称修复绝伊甸缺圈。仅有输出正常的正例不能反推实战前置正常。
+這份補丁增強取證，不宣稱修復絕伊甸缺圈。僅有輸出正常的正例不能反推實戰前置正常。
 
-## 回归
+## 迴歸
 
-- 基础测试覆盖事件摘要、隐去名字/任意文本、预算与抑制计数、日志权限、其他地图无输出、
-  未注册回调、原异常传播，以及观察器失效时仍执行原回调。
-- 对真实重写 DLL 的七处入口执行 JIT 检查，并验证原正则返回值不变。
-- `--probe-drawing-diagnostics Host.exe <plugin-root> <独立配置目录>`：原 U7a 光轮读条/输出
-  两节点，回调在隔离 Host 内替换为记录器；验证原读条产生火安全变量、正常延迟输出、
-  功能关闭、缺实体/晚到和故意抛错。没有游戏内存权限，未连接或控制实际游戏。
-- 现有 `--probe-triggernometry-u7b-ordering` 验证原分散 8 圈/分摊 2 圈加箭头、半场刀和
-  晚到实体时序保持，同时检查实体到达和原回调诊断，无 observer-error。
+- 基礎測試覆蓋事件摘要、隱去名字/任意文字、預算與抑制計數、日誌許可權、其他地圖無輸出、
+  未註冊回撥、原異常傳播，以及觀察器失效時仍執行原回撥。
+- 對真實重寫 DLL 的七處入口執行 JIT 檢查，並驗證原正則返回值不變。
+- `--probe-drawing-diagnostics Host.exe <plugin-root> <独立配置目录>`：原 U7a 光輪讀條/輸出
+  兩節點，回撥在隔離 Host 內替換為記錄器；驗證原讀條產生火安全變數、正常延遲輸出、
+  功能關閉、缺實體/晚到和故意拋錯。沒有遊戲記憶體許可權，未連線或控制實際遊戲。
+- 現有 `--probe-triggernometry-u7b-ordering` 驗證原分散 8 圈/分攤 2 圈加箭頭、半場刀和
+  晚到實體時序保持，同時檢查實體到達和原回撥診斷，無 observer-error。
 
-`Fixtures/U7aOrb.xml` 来自 U7a v0.11.1 本机订阅缓存的两个原节点及祖先配置。
-完整来源 SHA-256：`A60984AA5491D1ABB044A978C7CB30A0EB3A7E7DFEDD72F68A68274C1A54350B`。
-来源：<https://1824544011.cdn.123clouddisk.com/1824544011/Remote_Triggers/U7a.xml>。
-测试命令会写入独立配置目录，不能指向正式用户配置。
+`Fixtures/U7aOrb.xml` 來自 U7a v0.11.1 本機訂閱快取的兩個原節點及祖先配置。
+完整來源 SHA-256：`A60984AA5491D1ABB044A978C7CB30A0EB3A7E7DFEDD72F68A68274C1A54350B`。
+來源：<https://1824544011.cdn.123clouddisk.com/1824544011/Remote_Triggers/U7a.xml>。
+測試命令會寫入獨立配置目錄，不能指向正式使用者配置。

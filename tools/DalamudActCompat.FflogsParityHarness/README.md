@@ -1,8 +1,8 @@
 # FFLogs rDPS Parity Harness
 
-该工具从 FFLogs v2 public API 抓取真实 DNC 击杀样本，并通过 production
-`RaidDpsEstimator` 重放。它的职责是暴露差异，不会修改公式或用最终 rDPS
-反推 adaptor 补偿。
+該工具從 FFLogs v2 public API 抓取真實 DNC 擊殺樣本，並透過 production
+`RaidDpsEstimator` 重放。它的職責是暴露差異，不會修改公式或用最終 rDPS
+反推 adaptor 補償。
 
 ```text
 FFLogs API events
@@ -14,24 +14,24 @@ RaidDpsEstimator (production)
 ParityReportWriter
 ```
 
-## 数据口径
+## 資料口徑
 
-- `characterRankings` 仅用于发现公开 report/fight，不作为 parity ground truth。
+- `characterRankings` 僅用於發現公開 report/fight，不作為 parity ground truth。
 - FFLogs `DamageDone` table 的 `totalRDPS`、`totalRDPSTaken`、
-  `totalRDPSGiven`、`totalADPS`、`totalNDPS` 是参考总量。
-- FFLogs 与 DACT 都使用 `DamageDone.totalTime` 作为报告中的共同分母。
-- downtime 分类使用同一张表的 `damageDowntime`，不从最终 rDPS 反推。
-- `damage.amount` 提供有效伤害；相同 packet ID 的 `calculateddamage.timestamp`
-  提供 DACT action packet 时间。DoT tick 没有对应 calculateddamage 是预期行为。
-- FFLogs status ID 的一百万命名空间只做机械还原；Technical Finish 的 legacy
-  action ID 只做当前网络 action ID 映射。Normalization 不读取或补偿最终 rDPS。
+  `totalRDPSGiven`、`totalADPS`、`totalNDPS` 是參考總量。
+- FFLogs 與 DACT 都使用 `DamageDone.totalTime` 作為報告中的共同分母。
+- downtime 分類使用同一張表的 `damageDowntime`，不從最終 rDPS 反推。
+- `damage.amount` 提供有效傷害；相同 packet ID 的 `calculateddamage.timestamp`
+  提供 DACT action packet 時間。DoT tick 沒有對應 calculateddamage 是預期行為。
+- FFLogs status ID 的一百萬名稱空間只做機械還原；Technical Finish 的 legacy
+  action ID 只做當前網路 action ID 對映。Normalization 不讀取或補償最終 rDPS。
 
-FFLogs 官方数学参考：<https://www.fflogs.com/help/rdps>。
+FFLogs 官方數學參考：<https://www.fflogs.com/help/rdps>。
 
 ## 使用
 
-凭据优先读取 `FFLOGS_CLIENT_ID` / `FFLOGS_CLIENT_SECRET`，否则读取 DACT
-配置中的 FFLogs client。凭据和 token 不会写入缓存。
+憑據優先讀取 `FFLOGS_CLIENT_ID` / `FFLOGS_CLIENT_SECRET`，否則讀取 DACT
+配置中的 FFLogs client。憑據和 token 不會寫入快取。
 
 ```powershell
 dotnet run --project tools/DalamudActCompat.FflogsParityHarness -c Release -- --samples 100
@@ -54,56 +54,56 @@ The same mode also emits the strict direct-normal core, explicit interaction dec
 provider-level identifiability, cross-provider validation, and live-causal status fallback
 comparison in `percentage-identification-*` and `percentage-status-*` reports.
 
-`--percentage-audit` 只读取现有 106 场 cache，逐 provider/recipient 对账 fixed-magnitude
-percentage contribution，并输出 reference direction、single/overlap、event-state、DoT snapshot
-和 provider 类型诊断。FFLogs public API 不提供 per-event/per-window contribution；报告不会从整场
+`--percentage-audit` 只讀取現有 106 場 cache，逐 provider/recipient 對賬 fixed-magnitude
+percentage contribution，並輸出 reference direction、single/overlap、event-state、DoT snapshot
+和 provider 型別診斷。FFLogs public API 不提供 per-event/per-window contribution；報告不會從整場
 `given[]` 反推不存在的逐事件 truth。
 
-`--guaranteed-hit-experiment` 只读取现有 100 场缓存。它从 61 场 SAM partner 中选取
-30 场 guaranteed damage 最高的高信息量样本，并把 production 实测的 regular-action
-Devilment contribution 保持不变，只离线替换 guaranteed-event candidate contribution。
-比较基准只能是 FFLogs 整场 `Devilment given.total`；工具不会伪造或反推 per-action truth，
-也不会写回 production `TransferGuaranteedCriticalDirectContribution`。
+`--guaranteed-hit-experiment` 只讀取現有 100 場快取。它從 61 場 SAM partner 中選取
+30 場 guaranteed damage 最高的高資訊量樣本，並把 production 實測的 regular-action
+Devilment contribution 保持不變，只離線替換 guaranteed-event candidate contribution。
+比較基準只能是 FFLogs 整場 `Devilment given.total`；工具不會偽造或反推 per-action truth，
+也不會寫回 production `TransferGuaranteedCriticalDirectContribution`。
 
-`--devilment-probe` 只读取现有 manifest、原始 event cache 和第一轮
-`parity-report.json`。它固定选择 6 个 SAM 与 5 个 DRG 样本，输出逐 action、逐 window、
-guaranteed coverage、component parity 和 Cu/Du sensitivity 文件。FFLogs API 未提供的
-per-action/per-window contribution 保持为 `unavailable_api`；diagnostic scenario 不会写回
+`--devilment-probe` 只讀取現有 manifest、原始 event cache 和第一輪
+`parity-report.json`。它固定選擇 6 個 SAM 與 5 個 DRG 樣本，輸出逐 action、逐 window、
+guaranteed coverage、component parity 和 Cu/Du sensitivity 檔案。FFLogs API 未提供的
+per-action/per-window contribution 保持為 `unavailable_api`；diagnostic scenario 不會寫回
 normalization 或 production `RaidDpsEstimator`。
 
-原始 GraphQL JSON 默认缓存在
-`artifacts/fflogs-parity-harness/cache`。JSON、CSV 和 Markdown 报告默认写到
-`artifacts/fflogs-parity-harness/reports`。整个 `artifacts` 目录已被 Git 忽略，
-避免提交大体积战斗数据和公开玩家名称。
+原始 GraphQL JSON 預設快取在
+`artifacts/fflogs-parity-harness/cache`。JSON、CSV 和 Markdown 報告預設寫到
+`artifacts/fflogs-parity-harness/reports`。整個 `artifacts` 目錄已被 Git 忽略，
+避擴音交大體積戰鬥資料和公開玩家名稱。
 
-采集器会缓存每个原始响应、分页拉取 events、原子写缓存、保留 rate-limit
-余量并对瞬时 HTTP/GraphQL 失败重试。`--refresh` 会忽略现有响应缓存。
+採集器會快取每個原始響應、分頁拉取 events、原子寫快取、保留 rate-limit
+餘量並對瞬時 HTTP/GraphQL 失敗重試。`--refresh` 會忽略現有響應快取。
 
-## 当前边界
+## 當前邊界
 
-- 第一轮范围固定为 CN、AAC Heavyweight、difficulty 101、partition 9，按四个
-  encounter 分层抽样。
-- API events 没有 DACT 的完整 NameToggle/targetability 原始包；目标可选时长
-  parity 单独记录，不在 adaptor 中伪造。
-- production estimator 目前按来源聚合 DNC percentage contribution，因此只能
-  直接对比 Technical + Standard 合计；FFLogs 的两个分项仍单独保留在报告中。
-- DNC 尚未达到 production parity，不能标记 frozen。
+- 第一輪範圍固定為 CN、AAC Heavyweight、difficulty 101、partition 9，按四個
+  encounter 分層抽樣。
+- API events 沒有 DACT 的完整 NameToggle/targetability 原始包；目標可選時長
+  parity 單獨記錄，不在 adaptor 中偽造。
+- production estimator 目前按來源聚合 DNC percentage contribution，因此只能
+  直接對比 Technical + Standard 合計；FFLogs 的兩個分項仍單獨保留在報告中。
+- DNC 尚未達到 production parity，不能標記 frozen。
 
-## 第一轮公式审计
+## 第一輪公式審計
 
-与 FFLogs 公开说明逐项对照后：
+與 FFLogs 公開說明逐項對照後：
 
-- production 的 percentage multiplier 乘法叠加、lost damage 和 log-weighted
-  分摊结构与公开公式一致。
-- regular hit 与 simulated DoT 的 Crit/DH 分摊结构也与公开公式一致；self
-  contribution 会排除，pet damage 会回到 owner。
-- 尚未 parity 的首要数学输入差异是 `C_u` / `D_u`：FFLogs 公式要求玩家真实的
-  unbuffed Crit/DH chance，DACT 当前只能用 `25%`、40-hit prior 和观测命中估计，
-  再限制到 5%–50%。这不是 FFLogs 公开公式的一部分。
-- guaranteed Crit/DH 的 production action 表和 rate-buff scaling 是额外实现层；
-  第一轮样本中 SAM partner 的 Devilment 负差显著，必须优先逐 action 对照，不能
-  用最终差值调整 multiplier。
-- buff packet 时序、死亡清状态、DoT application/refresh snapshot 和 pet/owner
-  状态继承仍属于 event/state parity，不能由最终 rDPS 接近来判定正确。
+- production 的 percentage multiplier 乘法疊加、lost damage 和 log-weighted
+  分攤結構與公開公式一致。
+- regular hit 與 simulated DoT 的 Crit/DH 分攤結構也與公開公式一致；self
+  contribution 會排除，pet damage 會回到 owner。
+- 尚未 parity 的首要數學輸入差異是 `C_u` / `D_u`：FFLogs 公式要求玩家真實的
+  unbuffed Crit/DH chance，DACT 當前只能用 `25%`、40-hit prior 和觀測命中估計，
+  再限制到 5%–50%。這不是 FFLogs 公開公式的一部分。
+- guaranteed Crit/DH 的 production action 表和 rate-buff scaling 是額外實現層；
+  第一輪樣本中 SAM partner 的 Devilment 負差顯著，必須優先逐 action 對照，不能
+  用最終差值調整 multiplier。
+- buff packet 時序、死亡清狀態、DoT application/refresh snapshot 和 pet/owner
+  狀態繼承仍屬於 event/state parity，不能由最終 rDPS 接近來判定正確。
 
-本轮只记录这些差异，没有修改 production `RaidDpsEstimator`。
+本輪只記錄這些差異，沒有修改 production `RaidDpsEstimator`。

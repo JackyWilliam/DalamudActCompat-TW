@@ -72,11 +72,11 @@ The 245 preflights are not 245 downloaded event streams. They are cheap rejectio
 
 | Actor | Job | World | FFLogs canonicalID | Partition | Fights | Exposure coverage | Best grade |
 |---|---|---|---:|---:|---:|---|---|
-| 希奈斯特拉 | PCT | 幻影群岛 | 19060717 | 9 | 3 | No-rate, Crit-only, Crit+DH | C |
-| 弥生千鹤 | VPR | 水晶塔 | 20801974 | 9 | 4 | No-rate, Crit-only, Crit+DH, multiple Crit | B |
-| 深眸似海蓝 | VPR | 静语庄园 | 20928322 | 9 | 3 | Crit-only, Crit+DH, multiple Crit | B |
+| 希奈斯特拉 | PCT | 幻影群島 | 19060717 | 9 | 3 | No-rate, Crit-only, Crit+DH | C |
+| 彌生千鶴 | VPR | 水晶塔 | 20801974 | 9 | 4 | No-rate, Crit-only, Crit+DH, multiple Crit | B |
+| 深眸似海藍 | VPR | 靜語莊園 | 20928322 | 9 | 3 | Crit-only, Crit+DH, multiple Crit | B |
 | 甜心小孔 | SAM | 琥珀原 | 20581308 | 9 | 4 | No-rate, Crit-only, Crit+DH, multiple Crit | B |
-| 髙松燈 | MCH | 拉诺西亚 | 20676663 | 9 | 4 | No-rate, Crit-only | B |
+| 髙松燈 | MCH | 拉諾西亞 | 20676663 | 9 | 4 | No-rate, Crit-only | B |
 
 All five selected actors resolved through `Character.canonicalID`. Name, numeric server ID, world, region, job, and partition were retained and the report actor world was independently verified. Name-only matches were not accepted.
 
@@ -103,12 +103,12 @@ The table lists the 11 Grade-B provider-component pairs. Values are candidate re
 
 | Actor | Fixed percentage component | Fight A | Fight B | Rate change | Current | BaseLog | Shapley | Shapley3 | Winner | Evidence |
 |---|---|---|---|---|---:|---:|---:|---:|---|---|
-| 弥生千鹤 | DNC Technical Finish | QZLN8PBw9FnTjXCb:12 | hzGKgx2fnyLPpTXH:26 | No-rate → Crit+DH | 33,693.1 | 2,251.2 | 2,755.3 | 2,458.8 | BaseLog | guaranteed/periodic mixed |
-| 深眸似海蓝 | DNC Technical Finish | VRA9K3ktL4pFay8G:5 | gGkXVfNFRcbZLhYm:1 | Crit+DH → Crit-only | -31,431.4 | -1,595.1 | -2,592.2 | -2,219.8 | BaseLog | normal-direct |
-| 深眸似海蓝 | DNC Technical Finish | VRA9K3ktL4pFay8G:5 | 7BPRVHbLJAxk4McF:1 | Crit+DH → Crit-only | -31,044.4 | -1,595.9 | -2,590.6 | -2,218.1 | BaseLog | normal-direct |
+| 彌生千鶴 | DNC Technical Finish | QZLN8PBw9FnTjXCb:12 | hzGKgx2fnyLPpTXH:26 | No-rate → Crit+DH | 33,693.1 | 2,251.2 | 2,755.3 | 2,458.8 | BaseLog | guaranteed/periodic mixed |
+| 深眸似海藍 | DNC Technical Finish | VRA9K3ktL4pFay8G:5 | gGkXVfNFRcbZLhYm:1 | Crit+DH → Crit-only | -31,431.4 | -1,595.1 | -2,592.2 | -2,219.8 | BaseLog | normal-direct |
+| 深眸似海藍 | DNC Technical Finish | VRA9K3ktL4pFay8G:5 | 7BPRVHbLJAxk4McF:1 | Crit+DH → Crit-only | -31,044.4 | -1,595.9 | -2,590.6 | -2,218.1 | BaseLog | normal-direct |
 | 甜心小孔 | NIN Dokumori | pcZ6mntRwWDY2Khz:2 | fhdXCbxaGPVMYv19:3 | Crit-only → Crit+DH | 29,958.4 | 3,424.2 | 3,581.9 | 3,240.8 | Shapley3 | guaranteed mixed |
-| 弥生千鹤 | DNC Technical Finish | P2tkCNZpRzADwjLr:19 | hzGKgx2fnyLPpTXH:26 | Crit-only → Crit+DH | 21,810.6 | 1,393.1 | 1,689.3 | 1,392.8 | Shapley3 | normal-direct |
-| 弥生千鹤 | DNC Technical Finish | KCz4QR7p1mq3kwrg:5 | P2tkCNZpRzADwjLr:19 | Crit+DH → Crit-only | -14,520.6 | -1,485.7 | -1,478.7 | -1,258.5 | Shapley3 | normal-direct |
+| 彌生千鶴 | DNC Technical Finish | P2tkCNZpRzADwjLr:19 | hzGKgx2fnyLPpTXH:26 | Crit-only → Crit+DH | 21,810.6 | 1,393.1 | 1,689.3 | 1,392.8 | Shapley3 | normal-direct |
+| 彌生千鶴 | DNC Technical Finish | KCz4QR7p1mq3kwrg:5 | P2tkCNZpRzADwjLr:19 | Crit+DH → Crit-only | -14,520.6 | -1,485.7 | -1,478.7 | -1,258.5 | Shapley3 | normal-direct |
 | 甜心小孔 | SMN Searing Light | BxKpkCmbTGYw8cgM:11 | XctRPg9KJYLmbnHB:1 | Crit-only → No-rate | -8,506.6 | -1,231.2 | -1,274.8 | -1,274.8 | BaseLog | guaranteed mixed |
 | 髙松燈 | NIN Dokumori | 7WZAg36QxPYVGh1t:2 | GN7LcWHwna3bBDqd:13 | No-rate → Crit-only | 6,753.8 | 173.9 | 226.5 | 226.5 | BaseLog | guaranteed mixed |
 | 髙松燈 | NIN Dokumori | VdD8qNaHX14YWB2G:5 | GN7LcWHwna3bBDqd:13 | No-rate → Crit-only | 19,924.5 | 13,344.5 | 13,397.1 | 13,397.1 | RateFirst | guaranteed mixed |
@@ -118,8 +118,8 @@ The table lists the 11 Grade-B provider-component pairs. Values are candidate re
 The four primary normal-direct controls are the two VPR actors. Their winner flips by actor:
 
 ```text
-深眸似海蓝: SharedBaseLog 2 / 2
-弥生千鹤:   SharedShapley3 2 / 2
+深眸似海藍: SharedBaseLog 2 / 2
+彌生千鶴:   SharedShapley3 2 / 2
 ```
 
 This is more important than the small overall MAE edge. It rejects promotion of either candidate as a universal ownership rule.

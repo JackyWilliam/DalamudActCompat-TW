@@ -2,7 +2,7 @@
 
 > This repository is the independent Taiwan API 13 / .NET 9 candidate. Matcha is excluded. In-game Taiwan acceptance is pending. See [Taiwan build notes](docs/taiwan-build.md) for pinned dependencies and validation limits.
 
-[简体中文](README.md) | [English](README_EN.md)
+[繁體中文](README.md) | [English](README_EN.md)
 
 [Website (中文)](https://dact.localhost2019.com/) · [Taiwan candidate builds](https://github.com/JackyWilliam/DalamudActCompat-TW/actions/workflows/build.yml) · [Third-party compatibility](docs/third-party-compatibility.md) · [Report an issue](https://github.com/JackyWilliam/DalamudActCompat-TW/issues) · [Support on Afdian](https://ifdian.net/a/raynor)
 
@@ -59,19 +59,17 @@ Starting with 0.4.1.0, sign in and select the friends icon beside the cloud stat
 
 > Open FFLogs upload logs only opens the local Network log directory and copies its path. It does not upload automatically. Diagnostic logs are for troubleshooting and do not replace combat logs.
 
-## Interface preview
+## UI preview
 
-![Control Center overview](docs/images/readme/control-center-overview.png)
+![Traditional Chinese control-center overview](docs/images/readme/tw-home.png)
 
-| Combat Meter settings | Cactbot and HTML overlays |
+| Cactbot timeline | Custom HTML overlay |
 | --- | --- |
-| [![Combat Meter settings](docs/images/readme/combat-meter-settings.png)](docs/images/readme/combat-meter-settings.png) | [![Overlay settings](docs/images/readme/overlay-settings.png)](docs/images/readme/overlay-settings.png) |
-| **Extension management** | **General settings** |
-| [![Extension management](docs/images/readme/extension-management.png)](docs/images/readme/extension-management.png) | [![General settings](docs/images/readme/general-settings.png)](docs/images/readme/general-settings.png) |
-| **Encounter history** | **Runtime status** |
-| [![Encounter history](docs/images/readme/encounter-history.png)](docs/images/readme/encounter-history.png) | [![Runtime status](docs/images/readme/runtime-status.png)](docs/images/readme/runtime-status.png) |
+| [![Cactbot settings](docs/images/readme/tw-cactbot.png)](docs/images/readme/tw-cactbot.png) | [![General overlay settings](docs/images/readme/tw-general.png)](docs/images/readme/tw-general.png) |
+| **Show/hide hotkeys** | **Source and URL** |
+| [![Hotkey settings](docs/images/readme/tw-hotkeys.png)](docs/images/readme/tw-hotkeys.png) | [![Source settings](docs/images/readme/tw-source.png)](docs/images/readme/tw-source.png) |
 
-> These screenshots show the v0.3.9.0 interface. Later versions keep the same information structure, but wording, version numbers, and individual options may change. Select a thumbnail to view the full image.
+> Rendered by the Taiwan candidate's actual UI code in Traditional Chinese with offline fixtures, not captured in the game client. Custom display names remain verbatim across UI languages. Click a thumbnail to view it at full size.
 
 ## Control Center
 

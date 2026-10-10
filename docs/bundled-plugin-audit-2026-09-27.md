@@ -1,57 +1,57 @@
-# 2026-09-27 插件核查、抹茶更新与 FoxTTS 布局修正
+# 2026-09-27 外掛核查、抹茶更新與 FoxTTS 佈局修正
 
 ## 上游核查
 
-| 组件 | 已核对版本或提交 | 处理 |
+| 元件 | 已核對版本或提交 | 處理 |
 | --- | --- | --- |
-| 抹茶 | [d4fffc6，2026-09-26](https://github.com/thewakingsands/matcha/commit/d4fffc60399549b9e9b8af9d6ca9bfec7378c7ff) | 从此源码构建 26.9.26.1753 DACT5，补齐 Host 的五项钓鱼操作码 |
-| Triggernometry 中文维护版 | [2.2.0.1 / b795485](https://github.com/MnFeN/Triggernometry/commit/b795485b280bc7acf5ece8139fad54870f7eea46) | 维护者 DLL、汉化与许可证重新下载后校验一致 |
-| 鲶鱼精邮差 | [1.3.6.6](https://github.com/Natsukage/PostNamazu/releases/tag/1.3.6.6) | 最新正式包校验一致，现有 1.3.6.6/1.3.6.7 接口兼容保留 |
-| 仿生石 | [0.0.4.2](https://github.com/MnFeN/Simulant/releases/tag/v0.0.4.2) | 最新 DLL SHA-256 与现有测试锁定值一致，原版兼容测试通过；仍为用户安装扩展 |
-| FoxTTS | [3.3.1.189](https://github.com/Noisyfox/ACT.FoxTTS/releases/tag/3.3.1) | 最新 DLL 校验一致，在 DACT Host 中修正窗口布局 |
-| 银山雀儿 | 0.6.0.4 | 已有二进制和 Host 回归通过；公开入口仍不能证明最新版，不宣称没有新包 |
-| Cactbot | [0.37.5](https://github.com/OverlayPlugin/cactbot/releases/tag/v0.37.5) | 最新正式包与锁文件一致；main 的八个未发布提交仍作为可选后续项 |
+| 抹茶 | [d4fffc6，2026-09-26](https://github.com/thewakingsands/matcha/commit/d4fffc60399549b9e9b8af9d6ca9bfec7378c7ff) | 從此原始碼構建 26.9.26.1753 DACT5，補齊 Host 的五項釣魚操作碼 |
+| Triggernometry 中文維護版 | [2.2.0.1 / b795485](https://github.com/MnFeN/Triggernometry/commit/b795485b280bc7acf5ece8139fad54870f7eea46) | 維護者 DLL、漢化與許可證重新下載後校驗一致 |
+| 鯰魚精郵差 | [1.3.6.6](https://github.com/Natsukage/PostNamazu/releases/tag/1.3.6.6) | 最新正式包校驗一致，現有 1.3.6.6/1.3.6.7 介面相容保留 |
+| 仿生石 | [0.0.4.2](https://github.com/MnFeN/Simulant/releases/tag/v0.0.4.2) | 最新 DLL SHA-256 與現有測試鎖定值一致，原版相容測試透過；仍為使用者安裝擴充套件 |
+| FoxTTS | [3.3.1.189](https://github.com/Noisyfox/ACT.FoxTTS/releases/tag/3.3.1) | 最新 DLL 校驗一致，在 DACT Host 中修正視窗布局 |
+| 銀山雀兒 | 0.6.0.4 | 已有二進位制和 Host 迴歸透過；公開入口仍不能證明最新版，不宣稱沒有新包 |
+| Cactbot | [0.37.5](https://github.com/OverlayPlugin/cactbot/releases/tag/v0.37.5) | 最新正式包與鎖檔案一致；main 的八個未釋出提交仍作為可選後續項 |
 
 IINACT 2.10.3.8、OverlayPlugin 0.19.108、FFXIV ACT Plugin 3.0.3.1 的
-官方 latest API 均与当前依赖一致。本次没有更换解析核心。
+官方 latest API 均與當前依賴一致。本次沒有更換解析核心。
 
 ## 抹茶
 
-上游新增 Fishing 事件涵盖抛竿、咬钩、提竿、收线、捕获、结束、退出和
-换区重置，并携带鱼饵、钓场、钩型、状态和时间。现有网络桥已传递原始
-epoch，本次保留这条路径。Host 重新构造事件表时补入 EventPlay4、
-SystemLogMessage、FishCaught、StatusEffectList 和 ClientTrigger，后者保留
-客户端方向位。旧版 DLL 缺少新增枚举时，仍可加载原有事件映射。
+上游新增 Fishing 事件涵蓋拋竿、咬鉤、提竿、收線、捕獲、結束、退出和
+換區重置，並攜帶魚餌、釣場、鉤型、狀態和時間。現有網路橋已傳遞原始
+epoch，本次保留這條路徑。Host 重新構造事件表時補入 EventPlay4、
+SystemLogMessage、FishCaught、StatusEffectList 和 ClientTrigger，後者保留
+客戶端方向位。舊版 DLL 缺少新增列舉時，仍可載入原有事件對映。
 
-DACT5 只替换 DACT4 包中的入口 DLL。数据、manifest、上游伴随 DLL 和
-加密运行时常量逐字节保持。兼容补丁继续限制配置文件访问并提供原有
-非阻塞通知桥。源码、版本与 DLL/ZIP 哈希在锁文件和
-`vendor/BundledActPlugins/matcha/BUILD.md` 中同步记录。
+DACT5 只替換 DACT4 包中的入口 DLL。資料、manifest、上游伴隨 DLL 和
+加密執行時常量逐位元組保持。相容補丁繼續限制配置檔案訪問並提供原有
+非阻塞通知橋。原始碼、版本與 DLL/ZIP 雜湊在鎖檔案和
+`vendor/BundledActPlugins/matcha/BUILD.md` 中同步記錄。
 
-## FoxTTS 窗口
+## FoxTTS 視窗
 
-原版一般设置页把引擎面板锚定在固定左栏右侧。控件缩放后，窄窗口中
-右侧滑条会被裁切。DACT 默认 960 像素宽的承载窗口及其 WinForms 环境
-使该布局限制更容易出现；原版控件的隔离测试能够复现。
+原版一般設定頁把引擎面板錨定在固定左欄右側。控制元件縮放後，窄視窗中
+右側滑條會被裁切。DACT 預設 960 畫素寬的承載視窗及其 WinForms 環境
+使該佈局限制更容易出現；原版控制元件的隔離測試能夠復現。
 
-Host 初始化 FoxTTS 后，将同一批控件放进可重排的布局：空间足够时保留
-双栏，空间不足时先显示引擎和滑条、再向下排列其他设置。窄窗口使用
-纵向滚动。控件和绑定保留，随包 FoxTTS DLL、TTS 引擎、声音设置和播报
-路径均未修改。其他扩展的窗口不应用此布局。
+Host 初始化 FoxTTS 後，將同一批控制元件放進可重排的佈局：空間足夠時保留
+雙欄，空間不足時先顯示引擎和滑條、再向下排列其他設定。窄視窗使用
+縱向滾動。控制元件和繫結保留，隨包 FoxTTS DLL、TTS 引擎、聲音設定和播報
+路徑均未修改。其他擴充套件的視窗不應用此佈局。
 
-## 验证范围
+## 驗證範圍
 
-- 真实 FoxTTS 控件：中英文，100%/125%/150%/200% 控件缩放，700/944/1400
-  像素客户区，反复缩放窗口和更换 CafePro/Cafe/Edge 设置面板。检查滑条
-  横向完整可见、宽度可操作、数值不变和无横向滚动，并检查截图。
-- 上述缩放是离线控件缩放测试，不等同于各物理显示器 DPI 的现场验收。
-- 真实抹茶 DLL：国服和国际服事件表、钓鱼完整生命周期、重复包、错误
-  方向、截断包、未知鱼饵与服务端确认以小钓大、原 FishBite 事件；另回归
-  FATE、跨服排队、Host 双向网络、通知、权限与卸载。
-- 全套 Package/FFXIV、Host（含真实 Triggernometry/PostNamazu/FoxTTS/
-  SilverDasher/Matcha）、仿生石原版、LegacyResource 及 U7b 时序测试。
-- 按现有发布参数构建和收集完整包，检查程序集/依赖版本、资源身份、
-  包哈希和无本机路径/配置/调试符号。未启动游戏或触发真实游戏命令。
+- 真實 FoxTTS 控制元件：中英文，100%/125%/150%/200% 控制元件縮放，700/944/1400
+  畫素客戶區，反覆縮放視窗和更換 CafePro/Cafe/Edge 設定面板。檢查滑條
+  橫向完整可見、寬度可操作、數值不變和無橫向滾動，並檢查截圖。
+- 上述縮放是離線控制元件縮放測試，不等同於各物理顯示器 DPI 的現場驗收。
+- 真實抹茶 DLL：國服和國際服事件表、釣魚完整生命週期、重複包、錯誤
+  方向、截斷包、未知魚餌與服務端確認以小釣大、原 FishBite 事件；另迴歸
+  FATE、跨服排隊、Host 雙向網路、通知、許可權與解除安裝。
+- 全套 Package/FFXIV、Host（含真實 Triggernometry/PostNamazu/FoxTTS/
+  SilverDasher/Matcha）、仿生石原版、LegacyResource 及 U7b 時序測試。
+- 按現有釋出引數構建和收集完整包，檢查程式集/依賴版本、資源身份、
+  包雜湊和無本機路徑/配置/除錯符號。未啟動遊戲或觸發真實遊戲命令。
 
-本次适配随 DACT 0.4.5.2 发布。游戏内钓鱼事件及 FoxTTS 在用户实际
-屏幕上的显示效果仍需更新后验收。
+本次適配隨 DACT 0.4.5.2 釋出。遊戲內釣魚事件及 FoxTTS 在使用者實際
+螢幕上的顯示效果仍需更新後驗收。

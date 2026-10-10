@@ -1,4 +1,4 @@
-> 台服仓库说明：Matcha 未随台服候选包分发。下列历史来源说明保留用于源码归属核对。台服依赖来源与哈希见 tools/taiwan-dependencies.lock.json。
+> 台服倉庫說明：Matcha 未隨台服候選包分發。下列歷史來源說明保留用於原始碼歸屬核對。台服依賴來源與雜湊見 tools/taiwan-dependencies.lock.json。
 
 # Third-party notices
 

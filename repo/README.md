@@ -1,7 +1,7 @@
-# 台服候选仓库元数据
+# 台服候選倉庫後設資料
 
-源码与候选构建位于 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW)。
+原始碼與候選構建位於 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW)。
 
-`pluginmaster.json` 当前为空：台服正式订阅尚未发布。候选包从本仓库的 Taiwan Build 工作流获取，构建和测试安装方式见 [台服构建说明](../docs/taiwan-build.md)。
+`pluginmaster.json` 當前為空：台服正式訂閱尚未釋出。候選包從本倉庫的 Taiwan Build 工作流獲取，構建和測試安裝方式見 [台服構建說明](../docs/taiwan-build.md)。
 
-`cn-pluginmaster.reference.json` 仅保留历史国服元数据用于溯源，不能作为台服安装或更新源。台服构建不会同步到国服分发仓库。
+`cn-pluginmaster.reference.json` 僅保留歷史國服後設資料用於溯源，不能作為台服安裝或更新源。台服構建不會同步到國服分發倉庫。

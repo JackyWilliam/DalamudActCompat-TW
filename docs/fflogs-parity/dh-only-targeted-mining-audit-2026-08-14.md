@@ -68,16 +68,16 @@ The ten rejected near candidates are:
 
 | Actor | Job | World | Fight | Encounter | Known fixed percentage components |
 |---|---|---|---|---:|---|
-| Akemi | DNC | 太阳海岸 | `nq1YbBWFpN96HxfQ:1` | 101 | Mage's Ballad; Searing Light |
-| 艾雅若拉 | PCT | 红玉海 | `TZ7rwx2QLdpn1V3a:1` | 101 | Divination; Mage's Ballad; Dokumori; The Spear |
-| 一条薰· | SAM | 幻影群岛 | `WYQa3thjgCG8T6nV:1` | 101 | Mage's Ballad; Arcane Circle; Starry Muse |
-| 一条薰· | SAM | 幻影群岛 | `Vf26ajkv9AnC8LHg:4` | 103 | Divination; Mage's Ballad; Arcane Circle; The Balance |
+| Akemi | DNC | 太陽海岸 | `nq1YbBWFpN96HxfQ:1` | 101 | Mage's Ballad; Searing Light |
+| 艾雅若拉 | PCT | 紅玉海 | `TZ7rwx2QLdpn1V3a:1` | 101 | Divination; Mage's Ballad; Dokumori; The Spear |
+| 一條薰· | SAM | 幻影群島 | `WYQa3thjgCG8T6nV:1` | 101 | Mage's Ballad; Arcane Circle; Starry Muse |
+| 一條薰· | SAM | 幻影群島 | `Vf26ajkv9AnC8LHg:4` | 103 | Divination; Mage's Ballad; Arcane Circle; The Balance |
 | 三字母 | SAM | 琥珀原 | `Mrt8ypWP14cwzG63:10` | 102 | Brotherhood; Mage's Ballad |
-| 惯坏 | SAM | 红茶川 | `Dgfm9nc1yhK3tJQW:23` | 101 | Divination; Mage's Ballad; Searing Light; The Balance |
-| 爱吃烧仙草 | SAM | 静语庄园 | `Dzdhc1FAJHq8pZ36:3` | 104 | Mage's Ballad; Starry Muse |
-| 秋水苍 | SAM | 宇宙和音 | `j4QcxtFRznBK789H:2` | 101 | Brotherhood; Mage's Ballad |
-| 恻隐心 | VPR | 拉诺西亚 | `2fapkJD3dK79PZQT:3` | 102 | Mage's Ballad; Starry Muse |
-| 绚烂旋律 | WAR | 潮风亭 | `nqfCvcMmgkt6F9JR:2` | 101 | Embolden; Divination; Mage's Ballad |
+| 慣壞 | SAM | 紅茶川 | `Dgfm9nc1yhK3tJQW:23` | 101 | Divination; Mage's Ballad; Searing Light; The Balance |
+| 愛吃燒仙草 | SAM | 靜語莊園 | `Dzdhc1FAJHq8pZ36:3` | 104 | Mage's Ballad; Starry Muse |
+| 秋水蒼 | SAM | 宇宙和音 | `j4QcxtFRznBK789H:2` | 101 | Brotherhood; Mage's Ballad |
+| 惻隱心 | VPR | 拉諾西亞 | `2fapkJD3dK79PZQT:3` | 102 | Mage's Ballad; Starry Muse |
+| 絢爛旋律 | WAR | 潮風亭 | `nqfCvcMmgkt6F9JR:2` | 101 | Embolden; Divination; Mage's Ballad |
 
 All ten contain Radiant Finale with an unknown 2%/4%/6% Coda magnitude in the same
 recipient aggregate. They therefore fail the user's explicit unknown-magnitude gate before
@@ -94,12 +94,12 @@ not requested after the metadata gate failed.
 
 | Actor | Job | World | DH-window candidate | Crit+DH comparison | Encounter change | Shared component | Grade |
 |---|---|---|---|---|---|---|---|
-| 艾雅若拉 | PCT | 红玉海 | `TZ7rwx2QLdpn1V3a:1` | `HMTFGvQa3hRNCjKr:9` | 101 → 102 | Mage's Ballad | C |
+| 艾雅若拉 | PCT | 紅玉海 | `TZ7rwx2QLdpn1V3a:1` | `HMTFGvQa3hRNCjKr:9` | 101 → 102 | Mage's Ballad | C |
 | 三字母 | SAM | 琥珀原 | `Mrt8ypWP14cwzG63:10` | `WKxhY4VfAz17mRMr:1` | 102 → 101 | Mage's Ballad | C |
-| 惯坏 | SAM | 红茶川 | `Dgfm9nc1yhK3tJQW:23` | `TH9GVFdQaymKYR6A:43` | 101 → 102 | Mage's Ballad | C |
-| 秋水苍 | SAM | 宇宙和音 | `j4QcxtFRznBK789H:2` | `bgN1xYHth3r4WJLX:3` | 101 → 104 | Brotherhood | C |
-| 恻隐心 | VPR | 拉诺西亚 | `2fapkJD3dK79PZQT:3` | `M8q3gYRhDmFjnzcH:13` | 102 → 104 | Mage's Ballad | C |
-| 绚烂旋律 | WAR | 潮风亭 | `nqfCvcMmgkt6F9JR:2` | `px37maKBGL9WYjQN:1` | 101 → 102 | Mage's Ballad | C |
+| 慣壞 | SAM | 紅茶川 | `Dgfm9nc1yhK3tJQW:23` | `TH9GVFdQaymKYR6A:43` | 101 → 102 | Mage's Ballad | C |
+| 秋水蒼 | SAM | 宇宙和音 | `j4QcxtFRznBK789H:2` | `bgN1xYHth3r4WJLX:3` | 101 → 104 | Brotherhood | C |
+| 惻隱心 | VPR | 拉諾西亞 | `2fapkJD3dK79PZQT:3` | `M8q3gYRhDmFjnzcH:13` | 102 → 104 | Mage's Ballad | C |
+| 絢爛旋律 | WAR | 潮風亭 | `nqfCvcMmgkt6F9JR:2` | `px37maKBGL9WYjQN:1` | 101 → 102 | Mage's Ballad | C |
 
 Combatant info, gear, item level, level, Crit/DH stats, Cu, and Du are unavailable for a
 valid matched group because none passed the metadata gate. No value was inferred from parse
@@ -121,7 +121,7 @@ evidence therefore cannot distinguish SharedBaseLog from SharedShapley3.
 ## E. Actor flip
 
 **Still present.** No independent DH-only axis was added, so the existing
-深眸似海蓝/BaseLog versus 弥生千鹤/Shapley3 normal-direct flip is unchanged. It cannot be
+深眸似海藍/BaseLog versus 彌生千鶴/Shapley3 normal-direct flip is unchanged. It cannot be
 classified as dimension-specific or actor-hidden-input behavior from this evidence.
 
 ## F. Why this public scope cannot answer the question
