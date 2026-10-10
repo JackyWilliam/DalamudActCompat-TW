@@ -10320,47 +10320,46 @@ static void ValidateHtmlOverlayDefaults()
         "README_EN.md"));
     var readmeImagePaths = new[]
     {
-        "control-center-overview.png",
-        "combat-meter-settings.png",
-        "overlay-settings.png",
-        "extension-management.png",
-        "general-settings.png",
-        "encounter-history.png",
-        "runtime-status.png",
+        "tw-home.png",
+        "tw-cactbot.png",
+        "tw-general.png",
+        "tw-hotkeys.png",
+        "tw-source.png",
     }.Select(name => Path.Combine(
         FindProjectRoot(),
         "docs",
         "images",
         "readme",
         name));
-    // README structure is part of the install/support contract, but its wording may evolve.
+    // Taiwan documentation uses Traditional Chinese; keep the same install,
+    // preview and support guarantees when localized headings and images change.
     Assert(
         !readmeSource.Contains("/actcompat settings", StringComparison.Ordinal) &&
         readmeSource.Contains("/actcompat off", StringComparison.Ordinal) &&
         readmeSource.Contains("[English](README_EN.md)", StringComparison.Ordinal) &&
-        readmeSource.Contains("## 安装", StringComparison.Ordinal) &&
-        readmeSource.Contains("### 1. 获取台服候选包", StringComparison.Ordinal) &&
+        readmeSource.Contains("## 安裝", StringComparison.Ordinal) &&
+        readmeSource.Contains("### 1. 獲取台服候選包", StringComparison.Ordinal) &&
         readmeSource.Contains("tools/build-taiwan.ps1", StringComparison.Ordinal) &&
         !readmeSource.Contains(
             "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompatRepo/main/pluginmaster.json",
             StringComparison.Ordinal) &&
-        readmeSource.Contains("## 界面预览", StringComparison.Ordinal) &&
+        readmeSource.Contains("## 介面預覽", StringComparison.Ordinal) &&
         readmeSource.Contains(
-            "docs/images/readme/control-center-overview.png",
+            "docs/images/readme/tw-home.png",
             StringComparison.Ordinal) &&
         readmeImagePaths.All(File.Exists) &&
         readmeSource.Contains("## 控制中心", StringComparison.Ordinal) &&
-        readmeSource.Contains("## 扩展、权限与重启", StringComparison.Ordinal) &&
-        readmeSource.Contains("### 战斗统计窗口不见了或一直为空", StringComparison.Ordinal) &&
-        readmeSource.Contains("副本内团灭重开后", StringComparison.Ordinal) &&
-        readmeSource.Contains("同一次进本放在一个文件夹", StringComparison.Ordinal) &&
-        readmeSource.Contains("每一把作为独立子记录保存", StringComparison.Ordinal) &&
+        readmeSource.Contains("## 擴充套件、許可權與重啟", StringComparison.Ordinal) &&
+        readmeSource.Contains("### 戰鬥統計視窗不見了或一直為空", StringComparison.Ordinal) &&
+        readmeSource.Contains("副本內團滅重開後", StringComparison.Ordinal) &&
+        readmeSource.Contains("同一次進本放在一個資料夾", StringComparison.Ordinal) &&
+        readmeSource.Contains("每一把作為獨立子記錄儲存", StringComparison.Ordinal) &&
         readmeSource.Contains("**HPS**", StringComparison.Ordinal) &&
-        readmeSource.Contains("**FFLogs 区间估算**", StringComparison.Ordinal) &&
-        readmeSource.Contains("重启共享 Host", StringComparison.Ordinal) &&
-        englishReadmeSource.Contains("[简体中文](README.md)", StringComparison.Ordinal) &&
+        readmeSource.Contains("**FFLogs 區間估算**", StringComparison.Ordinal) &&
+        readmeSource.Contains("重啟共享 Host", StringComparison.Ordinal) &&
+        englishReadmeSource.Contains("[繁體中文](README.md)", StringComparison.Ordinal) &&
         englishReadmeSource.Contains("## Installation", StringComparison.Ordinal) &&
-        englishReadmeSource.Contains("## Interface preview", StringComparison.Ordinal) &&
+        englishReadmeSource.Contains("## UI preview", StringComparison.Ordinal) &&
         englishReadmeSource.Contains("## Control Center", StringComparison.Ordinal) &&
         englishReadmeSource.Contains("## Troubleshooting", StringComparison.Ordinal) &&
         englishReadmeSource.Contains("## License", StringComparison.Ordinal),
