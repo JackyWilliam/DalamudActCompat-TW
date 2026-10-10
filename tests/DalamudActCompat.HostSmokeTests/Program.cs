@@ -2603,9 +2603,29 @@ async Task ValidateDrawingDiagnosticProbeAsync()
             }
             async Task Setup(string command, string marker)
             {
+                // Setup runs twice. An earlier acknowledgement must not release
+                // this wait while the next script is still being compiled/run.
+                var outputStart = processLogs[host.Id].Snapshot().Output.Length;
                 await Line(command);
-                await WaitForProcessOutputAsync(host, marker, TimeSpan.FromSeconds(15));
+                await WaitForProcessOutputAsync(host, marker, TimeSpan.FromSeconds(15), outputStart);
                 Console.WriteLine("Drawing probe: " + marker);
+            }
+            async Task WaitForMissingEntityCallback()
+            {
+                // State messages may overtake log actions on a busy runner. Keep
+                // the entity absent until the real callback records that prerequisite.
+                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+                while (DateTime.UtcNow < deadline)
+                {
+                    var records = DrawingDiagnosticTests.ParseRecords(processLogs[host.Id].Snapshot().Output);
+                    if (records.Any(r => r.GetProperty("stage").GetString() == "callback-enter" &&
+                        r.GetProperty("event").GetProperty("Actor").GetString() == "40FF0002" &&
+                        !r.GetProperty("state").GetProperty("snapshot").GetProperty("present").GetBoolean()))
+                        return;
+                    if (host.HasExited) break;
+                    await Task.Delay(50);
+                }
+                throw new TimeoutException("Missing-entity callback did not run before the late-entity snapshot.");
             }
             string OrbLine(string time, string id = "40FF0001") =>
                 $"[{time}] ChatLog 03:{id}:PRIVATE_ORB_NAME:0:100:0:0:0:0:17821:0:0:0:0:0:0:100:100:0:";
@@ -2618,7 +2638,7 @@ async Task ValidateDrawingDiagnosticProbeAsync()
             await Line(OrbLine("21:00:20.000"));
             await Setup("DACT_DRAW_SETUP", "DACT_DRAW_SETUP_DONE");
             await Line(OrbLine("21:00:30.000", "40FF0002"));
-            await Task.Delay(300);
+            await WaitForMissingEntityCallback();
             await SendAsync(HostMessageTypes.FfxivEntities, HostMessagePriority.State,
                 baseline with { Timestamp = DateTimeOffset.UtcNow, Combatants = [.. baseline.Combatants, orb, orb with { Id = 0x40FF0002, Address = 0x12350000 }] });
             await Task.Delay(9500);
@@ -5466,7 +5486,8 @@ async Task<(Process Host, HostTestPipe Pipe, string Session)> StartConnectedHost
 async Task WaitForProcessOutputAsync(
     Process process,
     string expected,
-    TimeSpan timeout)
+    TimeSpan timeout,
+    int outputStart = 0)
 {
     var deadline = DateTime.UtcNow + timeout;
     while (DateTime.UtcNow < deadline)
@@ -5474,7 +5495,7 @@ async Task WaitForProcessOutputAsync(
         var (output, error) = processLogs.TryGetValue(process.Id, out var log)
             ? log.Snapshot()
             : (string.Empty, string.Empty);
-        if (output.Contains(expected, StringComparison.Ordinal))
+        if (output.IndexOf(expected, outputStart, StringComparison.Ordinal) >= 0)
         {
             return;
         }
