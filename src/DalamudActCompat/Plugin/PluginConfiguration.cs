@@ -11,11 +11,8 @@ namespace DalamudActCompat.Plugin;
 public sealed class PluginConfiguration : IPluginConfiguration
 {
     private const int CurrentVersion = 17;
-#if DACT_TAIWAN
-    private const string DefaultUiLanguage = "zh-TW";
-#else
+    // The UI preference is independent of the Taiwan parser and client language.
     private const string DefaultUiLanguage = "zh-CN";
-#endif
 
     public int Version { get; set; } = CurrentVersion;
 
