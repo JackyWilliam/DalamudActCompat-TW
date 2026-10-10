@@ -12,16 +12,23 @@ internal sealed class PictoActNativeVfxBackend : IDisposable
     private const string StaticVfxRemoveSignature =
         "40 53 48 83 EC 20 48 8B D9 48 8B 89 ?? ?? ?? ?? 48 85 C9 74 28 " +
         "33 D2 E8 ?? ?? ?? ?? 48 8B 8B ?? ?? ?? ?? 48 85 C9";
+#if DACT_TAIWAN
+    // API 13's TC structs omit these VFX fields/methods. These offsets come from
+    // the corresponding 7.3 VFX layout; native Taiwan execution still needs game QA.
+    private static readonly nint DirtyFlagOffset = 0x38;
+    private static readonly nint ColorOffset = 0x260;
+#else
     private static readonly nint DirtyFlagOffset =
         Marshal.OffsetOf<VfxObject>(nameof(VfxObject.ObjectFlags));
+    private static readonly nint ColorOffset =
+        Marshal.OffsetOf<VfxObject>(nameof(VfxObject.Color));
+#endif
     private static readonly nint PositionOffset =
         Marshal.OffsetOf<VfxObject>(nameof(VfxObject.Position));
     private static readonly nint RotationOffset =
         Marshal.OffsetOf<VfxObject>(nameof(VfxObject.Rotation));
     private static readonly nint ScaleOffset =
         Marshal.OffsetOf<VfxObject>(nameof(VfxObject.Scale));
-    private static readonly nint ColorOffset =
-        Marshal.OffsetOf<VfxObject>(nameof(VfxObject.Color));
     private readonly object syncRoot = new();
     private readonly HashSet<nint> activeHandles = [];
     private readonly StaticVfxCreateDelegate create;
@@ -40,13 +47,21 @@ internal sealed class PictoActNativeVfxBackend : IDisposable
         ISigScanner sigScanner,
         IGameInteropProvider gameInteropProvider)
     {
+#if DACT_TAIWAN
+        var createAddress = sigScanner.ScanText("E8 ?? ?? ?? ?? F3 0F 10 35 ?? ?? ?? ?? 48 89 43 08");
+#else
         var createAddress = VfxObject.Addresses.Create.Value;
+#endif
         if (createAddress == nint.Zero)
         {
             throw new InvalidOperationException("FFXIVClientStructs did not resolve VfxObject.Create.");
         }
 
+#if DACT_TAIWAN
+        var updateAddress = sigScanner.ScanText("E8 ?? ?? ?? ?? ?? ?? ?? 8B 4A ?? 85 C9");
+#else
         var updateAddress = VfxObject.Addresses.Update.Value;
+#endif
         if (updateAddress == nint.Zero)
         {
             throw new InvalidOperationException("FFXIVClientStructs did not resolve VfxObject.Update.");
@@ -54,8 +69,7 @@ internal sealed class PictoActNativeVfxBackend : IDisposable
 
         var removeAddress = sigScanner.ScanText(StaticVfxRemoveSignature);
         create = Marshal.GetDelegateForFunctionPointer<StaticVfxCreateDelegate>(createAddress);
-        // Update is a generated FFXIVClientStructs member address. Reusing that authoritative
-        // binding avoids a second caller-pattern signature drifting independently each patch.
+        // Resolve once at startup; a missing regional signature selects the ImGui fallback.
         update = Marshal.GetDelegateForFunctionPointer<StaticVfxUpdateDelegate>(updateAddress);
         removeHook = gameInteropProvider.HookFromAddress<StaticVfxRemoveDelegate>(
             removeAddress,

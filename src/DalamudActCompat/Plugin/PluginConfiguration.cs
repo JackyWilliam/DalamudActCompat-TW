@@ -11,6 +11,11 @@ namespace DalamudActCompat.Plugin;
 public sealed class PluginConfiguration : IPluginConfiguration
 {
     private const int CurrentVersion = 17;
+#if DACT_TAIWAN
+    private const string DefaultUiLanguage = "zh-TW";
+#else
+    private const string DefaultUiLanguage = "zh-CN";
+#endif
 
     public int Version { get; set; } = CurrentVersion;
 
@@ -34,9 +39,9 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public string ActPluginDirectory { get; set; } = string.Empty;
 
-    public string UiLanguage { get; set; } = "zh-CN";
+    public string UiLanguage { get; set; } = DefaultUiLanguage;
 
-    public GameRegionMode GameRegionMode { get; set; } = GameRegionMode.Auto;
+    public GameRegionMode GameRegionMode { get; set; } = GameRegionMode.TraditionalChinese;
 
     public ParserScope ParserScope { get; set; } = ParserScope.All;
 
@@ -279,9 +284,8 @@ public sealed class PluginConfiguration : IPluginConfiguration
         }
         if (Version < 11)
         {
-            // Existing installations inherit detection instead of being silently pinned to
-            // the CN behavior that older builds happened to expose.
-            GameRegionMode = GameRegionMode.Auto;
+            // Imported older profiles must use the independent Taiwan dependency chain.
+            GameRegionMode = GameRegionMode.TraditionalChinese;
             Version = 11;
             changed = true;
         }
@@ -350,8 +354,9 @@ public sealed class PluginConfiguration : IPluginConfiguration
         HistoryLimit = 20;
         LogDirectory = defaultLogDirectory;
         ActPluginDirectory = string.Empty;
-        UiLanguage = "zh-CN";
-        GameRegionMode = GameRegionMode.Auto;
+        // Reset must match a fresh installation of this regional build, including cloud default detection.
+        UiLanguage = DefaultUiLanguage;
+        GameRegionMode = GameRegionMode.TraditionalChinese;
         ParserScope = ParserScope.All;
         EncounterResetMode = EncounterResetMode.DactDefault;
         EncounterResetSeconds = 5;

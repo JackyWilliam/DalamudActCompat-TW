@@ -359,8 +359,8 @@ public sealed class HelpWindow : Window
                 "打开主页，保持“启用解析”和“自动启动解析器”开启。顶部显示“运行中”后，战斗日志才会进入统计。",
                 "On Home, keep Enable parsing and Auto start parser enabled. Combat logs enter the meter only after the header shows Running."));
             DrawBullet(text.Get(
-                "如果一直停在初始化，输入 /actcompat status：先看解析器，再看共享 Host、抹茶 Host 和通用 Host，不要反复重载整个游戏。",
-                "If initialization does not finish, use /actcompat status. Check the parser first, then the shared, Matcha, and generic Hosts instead of repeatedly reloading the whole game."));
+                "初始化未完成时，用 /actcompat status 依次检查解析器、共享 Host 和通用 Host。",
+                "If initialization stalls, use /actcompat status to check the parser, Shared Host, and Generic Host."));
         });
         DrawCard("help-start-control-center", text.Get("控制中心五个页面怎么用", "Using the five control-center pages"), 420, () =>
         {
@@ -625,8 +625,8 @@ public sealed class HelpWindow : Window
                 "ACT.FoxTTS：把触发器或 Cactbot 的文字提醒转换为语音；语音服务、音色和 Pro 选项在扩展配置中设置。",
                 "ACT.FoxTTS converts Triggernometry or Cactbot text alerts to speech. Configure the speech service, voice, and Pro option from the extension."));
             DrawBullet(text.Get(
-                "银山雀儿：默认关闭，启用后提供其原有通知与网络功能；抹茶使用单独的专属 Host。",
-                "SilverDasher is disabled by default and retains its original notification/network features when enabled. Matcha runs in a separate dedicated Host."));
+                "银山雀儿默认关闭；启用后提供通知与网络功能。",
+                "SilverDasher is disabled by default; enable it for notifications and network features."));
             DrawBullet(text.Get(
                 "Triggernometry、鲶鱼精、FoxTTS 和银山雀儿共用“共享 ACT Host”；普通自行导入扩展使用“通用 Host”。",
                 "Triggernometry, PostNamazu, FoxTTS, and SilverDasher share the Shared ACT Host. Ordinary imported extensions use the Generic Host."));
@@ -667,14 +667,14 @@ public sealed class HelpWindow : Window
                 "首次安装 DACT 或内置扩展更新后：先在“三方扩展声明”中阅读作者、来源、版本和哈希，点击“知悉并安装 / 更新”；安装完成后选择“同意并启用完整权限”，或选择安全模式后稍后逐项开放。",
                 "After first installing DACT or updating bundled extensions, review author, source, version, and hash under Third-party extension notice, then select Acknowledge and install / update. When installation finishes, accept full permissions or keep safe mode and grant individual permissions later."));
             DrawBullet(text.Get(
-                "给内置扩展补权限：打开“控制中心 → 扩展”，滚动到“ACT 插件权限边界”，展开鲶鱼精、Triggernometry、银山雀儿或抹茶，勾选需要的能力。更改会保存并自动重启对应 Host。",
-                "To grant permissions to a bundled extension, open Control Center > Extensions, scroll to ACT plugin permission boundary, expand PostNamazu, Triggernometry, SilverDasher, or Matcha, and enable the required capabilities. Changes are saved and the assigned Host restarts automatically."));
+                "在控制中心的扩展页展开对应扩展，勾选所需权限。更改会保存并重启对应 Host。",
+                "Expand the extension on the Extensions page and select its required permissions. Changes are saved and restart its Host."));
             DrawBullet(text.Get(
                 "给自行导入的普通 ACT 插件授权：在“用户安装的普通 ACT 插件”中找到显示“未授权”的项目，点击“查看并授权”，核对预检清单后点击“授权并启用”。它随后会在通用 Host 中运行。",
                 "To authorize an imported generic ACT plugin, find the Not authorized item under User-installed generic ACT plugins, select Review and authorize, verify the preflight list, then select Authorize and enable. It will then run in Generic Host."));
             DrawBullet(text.Get(
-                "按实际用途开放：联网更新或查询需要“网络请求”；写扩展缓存或导出到用户选择的文件需要“写入文件”（抹茶保存专属目录内的自身配置不需要）；鲶鱼精命令与标点需要“发送游戏指令”，部分原版功能还需要“访问游戏原生内存”或“调用 Windows 原生接口”；高级触发器脚本需要“运行高风险脚本”。",
-                "Grant only what the feature needs: updates or online lookups need Network requests; extension cache writes or exports to a user-selected file need Write files (Matcha can save its own path-confined configuration without it); PostNamazu commands and markers need Send game commands, and some original features also need Access native game memory or Call native Windows APIs; advanced trigger scripts need Run high-risk scripts."));
+                "按用途授权：更新与查询需要网络权限；缓存与导出需要文件权限；命令与标点需要游戏指令权限；原生功能与高级脚本需要各自的额外权限。",
+                "Grant permissions by purpose: network for updates and queries, files for caches and exports, game commands for commands and markers, and additional permissions for native features or advanced scripts."));
             DrawBullet(text.Get(
                 "权限勾选后功能仍不可用时，先确认扩展本身也已启用，再用 /actcompat status 检查对应 Host。权限和“启用扩展”是两个独立条件。",
                 "If a feature still fails after permission is granted, confirm the extension itself is also enabled, then use /actcompat status to inspect the assigned Host. Permission and extension enablement are separate requirements."));
@@ -691,8 +691,8 @@ public sealed class HelpWindow : Window
                 "Triggernometry 工具箱更新鲶鱼精后，输入 /actcompat status，点击“重启共享 Host”。这就是 DACT 对应的“重启 ACT”，通常不需要退出游戏。",
                 "After Triggernometry Toolbox updates PostNamazu, use /actcompat status and select Restart shared Host. This is DACT's equivalent of 'restart ACT' and normally does not require exiting the game."));
             DrawBullet(text.Get(
-                "抹茶更新后重启“抹茶 Host”；普通自行导入扩展更新后重启“通用 Host”。只有对应 Host 无法停止或 DACT 自身更新要求重载时，才考虑完整重启游戏。",
-                "Restart Matcha Host after a Matcha update and Generic Host after updating an ordinary imported extension. Restart the whole game only if the assigned Host cannot stop or DACT itself requires a reload."));
+                "普通导入扩展更新后，重启通用 Host；只有 Host 无法停止或 DACT 要求重载时，才需要重启游戏。",
+                "After updating an imported extension, restart Generic Host. Restart the game only if the Host cannot stop or DACT requires a reload."));
         });
         DrawCard("help-extension-safety", text.Get("权限与安全要求", "Permissions and security requirements"), 286, () =>
         {
@@ -722,8 +722,8 @@ public sealed class HelpWindow : Window
         DrawCard("help-troubleshooting-layers", text.Get("先看运行状态，不要先删配置", "Check runtime status before deleting configuration"), 244, () =>
         {
             DrawBullet(text.Get(
-                "解析器负责读取战斗日志；共享 Host 负责 Triggernometry、鲶鱼精、FoxTTS 和银山雀儿；抹茶与普通扩展各有自己的 Host。",
-                "The parser reads combat logs. Shared Host runs Triggernometry, PostNamazu, FoxTTS, and SilverDasher. Matcha and ordinary imported extensions use their own Hosts."));
+                "解析器读取战斗日志；四个内置扩展使用共享 Host，普通导入扩展使用通用 Host。",
+                "The parser reads combat logs. The four bundled extensions use Shared Host; imported generic extensions use Generic Host."));
             DrawBullet(text.Get(
                 "输入 /actcompat status，找到最先不是“运行中/已连接”的一层。下游一起报错时先修上游，例如解析器未运行时不要先重装悬浮窗。",
                 "Use /actcompat status and find the first layer that is not Running/Connected. When downstream layers fail together, fix the upstream layer first; for example, do not reinstall overlays while the parser is stopped."));
@@ -737,8 +737,8 @@ public sealed class HelpWindow : Window
                 "鲶鱼精、Triggernometry、FoxTTS、银山雀儿：重启共享 Host。",
                 "PostNamazu, Triggernometry, FoxTTS, or SilverDasher: restart Shared Host."));
             DrawBullet(text.Get(
-                "抹茶：重启抹茶 Host。自行导入的普通 ACT 插件：重启通用 Host。",
-                "Matcha: restart Matcha Host. Ordinary imported ACT plugins: restart Generic Host."));
+                "自行导入的普通 ACT 插件：重启通用 Host。",
+                "Imported generic ACT plugins: restart Generic Host."));
             DrawBullet(text.Get(
                 "战斗统计没有任何日志、系统 FFXIV_ACT_Plugin/OverlayPlugin 状态变化：重启解析器。",
                 "No combat logs at all, or changed system FFXIV_ACT_Plugin/OverlayPlugin state: restart the parser."));
@@ -788,8 +788,8 @@ public sealed class HelpWindow : Window
                 "然后点击该扩展的“打开配置”，确认功能本身已在扩展内部启用。例如触发器需要已经导入并启用，FoxTTS 需要可用语音服务、音色和输出设备。",
                 "Then open that extension's configuration and confirm the feature is enabled inside the extension itself. For example, triggers must be imported and enabled, while FoxTTS needs a working speech service, voice, and output device."));
             DrawBullet(text.Get(
-                "用 /actcompat status 检查它所在的 Host：Triggernometry、鲶鱼精、FoxTTS、银山雀儿看共享 Host；抹茶看抹茶 Host；普通导入插件看通用 Host。只重启对应 Host。",
-                "Use /actcompat status to inspect its assigned Host: Shared Host for Triggernometry, PostNamazu, FoxTTS, and SilverDasher; Matcha Host for Matcha; Generic Host for imported plugins. Restart only that Host."));
+                "用 /actcompat status 检查扩展所在的共享或通用 Host，然后只重启对应 Host。",
+                "Use /actcompat status to inspect the extension’s Shared or Generic Host, then restart that Host."));
             DrawBullet(text.Get(
                 "若共享 Host 整体运行而仅一个动作失败，优先看权限和该扩展配置；若整个 Host 报错，复制状态页或扩展失败窗口中的完整诊断，不要只截最后一行。",
                 "If Shared Host is running and only one action fails, check permissions and that extension's settings first. If the entire Host errors, copy the complete diagnostic from Runtime Status or the extension-failure window instead of capturing only its last line."));
@@ -800,14 +800,14 @@ public sealed class HelpWindow : Window
                 "先在扩展页看实际 DLL 版本；实际版本与清单版本不同不一定是错误，外部工具箱可能只替换了 DLL。",
                 "First inspect the actual DLL version on Extensions. A difference between DLL and manifest is not necessarily an error; an external toolbox may have replaced only the DLL."));
             DrawBullet(text.Get(
-                "磁盘版本已更新但行为没变，说明运行中的 Host 仍持有旧程序集。按扩展归属重启共享、抹茶或通用 Host；DACT 本体更新则执行 Dalamud 重载，必要时完整退出游戏和启动器。",
-                "If the DLL on disk is new but behavior is unchanged, the running Host still holds the old assembly. Restart Shared, Matcha, or Generic Host as assigned. For a DACT update, reload Dalamud and fully exit the game and launcher only if needed."));
+                "文件更新后，正在运行的 Host 可能仍使用旧程序集。重启对应的共享或通用 Host；DACT 本体更新时按提示重载。",
+                "After a file update, the running Host may still hold the old assembly. Restart its Shared or Generic Host; follow reload instructions for DACT updates."));
         });
         DrawCard("help-troubleshooting-notifications", text.Get("通知没有出现", "Notifications did not appear"), 160, () =>
         {
             ImGui.TextWrapped(text.Get(
-                "抹茶和银山雀儿在游戏位于前台时使用游戏内卫月通知；切到其他应用时使用 Windows 通知中心。Windows 投递失败时会回退到游戏内通知。请同时检查 Windows 专注助手、游戏内通知设置和对应 Host 日志。",
-                "Matcha and SilverDasher use Dalamud notifications while the game is foreground. When another app is foreground, they use Windows Notification Center and fall back to Dalamud if Windows delivery fails. Check Windows Focus Assist, in-game notification settings, and the assigned Host log."));
+                "银山雀儿在游戏前台时使用卫月通知，后台时使用 Windows 通知，失败时回退到卫月。请检查通知设置、专注助手和 Host 日志。",
+                "SilverDasher uses Dalamud notifications in the foreground and Windows notifications in the background, falling back to Dalamud on failure. Check notification settings, Focus Assist, and Host logs."));
         });
         DrawCard("help-troubleshooting-report", text.Get("反馈问题时请提供什么", "What to include in a problem report"), 286, () =>
         {
@@ -956,19 +956,19 @@ public sealed class HelpWindow : Window
             Entry(HelpPage.Overlays, "help-overlay-html", "创建 HTML 悬浮窗", "Create HTML overlays", "从模板或可信网址创建并保存独立设置。", "Create from templates or trusted URLs with independent settings.", "http https file URL websocket ACTWS"),
             Entry(HelpPage.Overlays, "help-overlay-edit", "编辑位置与网页交互", "Edit and interact", "拖动、缩放、完成编辑、锁定与鼠标穿透。", "Move, resize, finish editing, lock, and click-through behavior.", "完成位置编辑 操作网页 滚轮 页面缩放"),
             Entry(HelpPage.Overlays, "help-overlay-empty", "悬浮窗没有数据", "Overlay has no data", "检查现代协议、ACTWS、解析器和网址要求。", "Check modern protocol, ACTWS, parser, and URL requirements.", "空白 重新检测 connected 连接"),
-            Entry(HelpPage.Extensions, "help-extension-bundled", "内置兼容扩展", "Bundled compatibility extensions", "Triggernometry、鲶鱼精、FoxTTS、银山雀儿与抹茶分别做什么。", "What Triggernometry, PostNamazu, FoxTTS, SilverDasher, and Matcha do.", "触发器 PostNamazu TTS Matcha SilverDasher 共享 Host"),
+            Entry(HelpPage.Extensions, "help-extension-bundled", "内置兼容扩展", "Bundled compatibility extensions", "四个内置扩展的用途。", "What the four bundled extensions do.", "触发器 PostNamazu TTS SilverDasher 共享 Host"),
             Entry(HelpPage.Extensions, "help-extension-install", "安装 DLL 或 ZIP", "Install DLL or ZIP", "静态预检、授权、失败诊断和 Host 分配。", "Static preflight, authorization, failure diagnostics, and Host assignment.", "第三方插件 import 导入 generic 通用"),
             Entry(HelpPage.Extensions, "help-extension-enable", "启用扩展和打开配置", "Enable and configure extensions", "说明已安装、已启用、扩展配置和 Host 重启。", "Explains installation, enablement, extension settings, and Host restarts.", "复选框 打开配置 Triggernometry FoxTTS 语音 音色"),
             Entry(HelpPage.Extensions, "help-extension-permissions", "如何给扩展开权限", "Grant extension permissions", "首次完整授权、内置扩展逐项授权和普通插件授权流程。", "Full first-run consent, per-capability bundled grants, and generic-plugin authorization.", "同意完整权限 安全模式 ACT 插件权限边界 查看并授权 网络 文件 游戏指令 原生内存 高风险脚本"),
             Entry(HelpPage.Extensions, "help-extension-update", "版本、更新与重启 ACT", "Versions, updates, and restart ACT", "实际 DLL 版本、清单版本和更新后重启对应 Host。", "Actual DLL version, manifest version, and restarting the assigned Host after updates.", "1.3.6.7 工具箱 toolbox FileVersion SHA-256 /actcompat status 重启共享 Host"),
             Entry(HelpPage.Extensions, "help-extension-safety", "扩展权限与安全", "Extension permissions and safety", "理解网络、文件、命令、内存和脚本权限。", "Understand network, file, command, memory, and scripting permissions.", "授权 Windows API 来源 风险"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-layers", "按层排错", "Layered troubleshooting", "从解析器和 Host 中找到最先失败的一层。", "Find the first failing layer among the parser and Hosts.", "运行状态 初始化 删除配置 factory reset"),
-            Entry(HelpPage.Troubleshooting, "help-troubleshooting-restart", "应该重启哪一个", "What to restart", "共享、抹茶、通用 Host 与解析器的对应关系。", "Mapping between Shared, Matcha, Generic Hosts, and the parser.", "重启游戏 reload ACT PostNamazu"),
+            Entry(HelpPage.Troubleshooting, "help-troubleshooting-restart", "应该重启哪一个", "What to restart", "共享 Host、通用 Host 与解析器的对应关系。", "Mapping between Shared Host, Generic Host, and the parser.", "重启游戏 reload ACT PostNamazu"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-plugin-unavailable", "插件打不开或一直初始化", "Plugin unavailable or stuck initializing", "从命令、卫月加载状态、解析器和诊断日志逐步检查。", "Check commands, Dalamud load state, parser state, and diagnostics in order.", "无法使用 没反应 unknown command 命令不存在 加载错误 重启解析器"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-no-meter", "没有战斗统计", "No combat data", "找回窗口并确认解析器、有效伤害、小队显示和所需日志。", "Find the meter and verify parser state, valid damage, party display, and required logs.", "没数据 没有队员 窗口不见 木人 auto hide 脱战自动隐藏 Network"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-extension-failed", "某个扩展或 TTS 不能用", "One extension or TTS fails", "检查安装、启用、权限、扩展内部配置和对应 Host。", "Check installation, enablement, permissions, extension settings, and assigned Host.", "触发器 标点 鲶鱼 TTS 语音 未授权 配置"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-update-old", "更新后仍是旧行为", "Old behavior after update", "核对实际 DLL 版本并重启仍持有旧程序集的 Host。", "Check the actual DLL version and restart the Host that still holds the old assembly.", "版本号 更新没生效 缓存 old assembly 工具箱"),
-            Entry(HelpPage.Troubleshooting, "help-troubleshooting-notifications", "通知没有出现", "Missing notifications", "检查游戏前台、Windows 通知和专注助手。", "Check game focus, Windows notifications, and Focus Assist.", "抹茶 银山雀儿 toast notification"),
+            Entry(HelpPage.Troubleshooting, "help-troubleshooting-notifications", "通知没有出现", "Missing notifications", "检查游戏前台、Windows 通知和专注助手。", "Check game focus, Windows notifications, and Focus Assist.", "银山雀儿 toast notification"),
             Entry(HelpPage.Troubleshooting, "help-troubleshooting-report", "反馈问题需要的材料", "Problem report checklist", "版本、时间、复现步骤、运行状态、诊断日志和 Network 日志。", "Version, time, reproduction steps, runtime state, diagnostics, and Network logs.", "怎么反馈 截图 日志 error report 角色名 服务器名"),
             Entry(HelpPage.FrequentlyAskedQuestions, "help-faq-no-meter", "打开插件却没有战斗统计", "No data after opening the plugin", "说明打开界面不等于已经产生战斗数据。", "Opening the UI does not itself produce combat data.", "空白 没人 没统计 有效伤害"),
             Entry(HelpPage.FrequentlyAskedQuestions, "help-faq-permissions", "权限在哪里开", "Where to grant permissions", "在扩展页逐项授权，并同时启用扩展。", "Grant capabilities on Extensions and also enable the extension.", "怎么开权限 全部打开 安全模式 未授权"),

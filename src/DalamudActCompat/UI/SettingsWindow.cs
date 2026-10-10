@@ -304,11 +304,6 @@ public sealed class SettingsWindow : Window
         ImGui.TextDisabled(text.Get(
             "使用独立事件队列与专属内存权限上下文。",
             "Uses an independent event queue and dedicated memory-permission context."));
-        ImGui.BulletText(text.Get("抹茶 / Cafe.Matcha（最后启动）", "Cafe.Matcha (started last)"));
-        ImGui.SameLine();
-        ImGui.TextDisabled(text.Get(
-            "默认自启动，并单独运行在第二个 Host；不会进入现有四个扩展的共享进程。",
-            "Starts by default in a second dedicated Host and never enters the process shared by the existing four extensions."));
 
         ImGui.Separator();
         ImGui.TextUnformatted(text.Get("ACT 插件权限边界", "ACT plugin permission boundary"));
@@ -333,9 +328,7 @@ public sealed class SettingsWindow : Window
                 "simulant",
                 BundledActPluginCapabilities.Simulant);
         }
-        permissionsChanged |= DrawPluginPermissions(
-            "matcha",
-            BundledActPluginCapabilities.Matcha);
+
         changed |= permissionsChanged;
 
         ImGui.Separator();

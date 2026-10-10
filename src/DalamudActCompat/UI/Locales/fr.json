@@ -1514,5 +1514,21 @@
   "View existing overlay": "Voir l’overlay existant",
   "This template is already listed; select it to view or open it.": "Ce modèle figure déjà dans la liste ; sélectionnez-le pour le consulter ou l’ouvrir.",
   "Back": "Retour",
-  "Parser: {0}": "Analyseur : {0}"
+  "Parser: {0}": "Analyseur : {0}",
+  "Taiwan": "Taïwan",
+  "Taiwan (manual)": "Taïwan (manuel)",
+  "Traditional Chinese": "Chinois traditionnel",
+  "If initialization stalls, use /actcompat status to check the parser, Shared Host, and Generic Host.": "Si l’initialisation se bloque, vérifiez l’analyseur, le Host partagé et le Host générique avec /actcompat status.",
+  "SilverDasher is disabled by default; enable it for notifications and network features.": "SilverDasher est désactivé par défaut ; activez-le pour les notifications et les fonctions réseau.",
+  "Expand the extension on the Extensions page and select its required permissions. Changes are saved and restart its Host.": "Développez l’extension dans la page Extensions et cochez les autorisations nécessaires. Les changements sont enregistrés et son Host redémarre.",
+  "Grant permissions by purpose: network for updates and queries, files for caches and exports, game commands for commands and markers, and additional permissions for native features or advanced scripts.": "Accordez les droits selon l’usage : réseau pour mises à jour et requêtes, fichiers pour cache et export, commandes de jeu pour commandes et marqueurs, droits supplémentaires pour fonctions natives et scripts avancés.",
+  "After updating an imported extension, restart Generic Host. Restart the game only if the Host cannot stop or DACT requires a reload.": "Après la mise à jour d’une extension importée, redémarrez le Host générique. Ne redémarrez le jeu que si le Host ne s’arrête pas ou si DACT doit être rechargé.",
+  "The parser reads combat logs. The four bundled extensions use Shared Host; imported generic extensions use Generic Host.": "L’analyseur lit les journaux de combat. Les quatre extensions intégrées utilisent le Host partagé ; les extensions génériques importées utilisent le Host générique.",
+  "Imported generic ACT plugins: restart Generic Host.": "Plugins ACT génériques importés : redémarrez le Host générique.",
+  "Use /actcompat status to inspect the extension’s Shared or Generic Host, then restart that Host.": "Avec /actcompat status, vérifiez le Host partagé ou générique de l’extension, puis redémarrez ce Host.",
+  "After a file update, the running Host may still hold the old assembly. Restart its Shared or Generic Host; follow reload instructions for DACT updates.": "Après une mise à jour de fichier, le Host peut encore utiliser l’ancien assembly. Redémarrez le Host partagé ou générique concerné ; suivez les consignes de rechargement pour DACT.",
+  "SilverDasher uses Dalamud notifications in the foreground and Windows notifications in the background, falling back to Dalamud on failure. Check notification settings, Focus Assist, and Host logs.": "SilverDasher utilise les notifications Dalamud au premier plan et Windows en arrière-plan, avec repli sur Dalamud en cas d’échec. Vérifiez les notifications, l’assistant de concentration et les journaux Host.",
+  "FoxTTS, PostNamazu, Triggernometry, and SilverDasher use Shared Host. Imported generic extensions use Generic Host. Both Hosts are isolated and run with standard-user privileges.": "FoxTTS, PostNamazu, Triggernometry et SilverDasher utilisent le Host partagé. Les extensions génériques importées utilisent le Host générique. Les deux Hosts sont isolés et fonctionnent avec les droits d’un utilisateur standard.",
+  "What the four bundled extensions do.": "Rôle des quatre extensions intégrées.",
+  "Mapping between Shared Host, Generic Host, and the parser.": "Correspondance entre Host partagé, Host générique et analyseur."
 }

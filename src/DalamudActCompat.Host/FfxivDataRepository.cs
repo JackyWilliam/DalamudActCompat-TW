@@ -55,6 +55,7 @@ internal sealed class FfxivDataRepository : IDataRepository
                 HostClientLanguage.French => Language.French,
                 HostClientLanguage.Chinese => Language.Chinese,
                 HostClientLanguage.Korean => Language.Korean,
+                HostClientLanguage.TraditionalChinese => Language.TraditionalChinese,
                 _ => Language.English,
             };
             gameRegion = (byte)context.Region;

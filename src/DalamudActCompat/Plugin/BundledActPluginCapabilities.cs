@@ -62,6 +62,5 @@ internal static class BundledActPluginCapabilities
     [
         .. All,
         ("silverdasher", SilverDasher),
-        ("matcha", Matcha),
     ];
 }

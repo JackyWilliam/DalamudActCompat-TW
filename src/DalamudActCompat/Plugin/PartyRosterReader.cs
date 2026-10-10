@@ -16,7 +16,12 @@ internal static class PartyRosterReader
         var groups = new[] { 1, 2, 3 };
         if (alliance)
         {
+#if DACT_TAIWAN
+            // TC's API 13 layout has the same 0x7FF0 group, but does not name this array.
+            var indices = new ReadOnlySpan<byte>((byte*)&manager->MainGroup + 0x7FC0, 3);
+#else
             var indices = manager->MainGroup.AllianceGroupIndices;
+#endif
             if (indices[0] < 3 && indices[1] < 3 && indices[2] < 3 &&
                 indices[0] != indices[1] && indices[0] != indices[2] && indices[1] != indices[2])
             {

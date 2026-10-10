@@ -867,7 +867,7 @@ internal sealed class LegacyPluginRuntime : IDisposable
                 "runtimes",
                 "win",
                 "lib",
-                "net10.0",
+                "net9.0",
                 "System.Speech.dll"),
             Path.Combine(AppContext.BaseDirectory, "System.Speech.dll"),
         ];

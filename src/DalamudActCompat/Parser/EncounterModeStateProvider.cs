@@ -108,7 +108,7 @@ internal sealed class EncounterModeStateProvider
         var previous = Read();
         var loading = condition[ConditionFlag.BetweenAreas] ||
                       condition[ConditionFlag.BetweenAreas51];
-        var territoryId = clientState.TerritoryType;
+        uint territoryId = clientState.TerritoryType;
         var mapId = clientState.MapId;
         var territoryKnown = knownTerritories.Contains(territoryId);
         var explorationTerritory = explorationTerritories.Contains(territoryId);

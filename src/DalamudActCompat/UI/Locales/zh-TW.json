@@ -1514,5 +1514,21 @@
   "View existing overlay": "查看現有懸浮窗",
   "This template is already listed; select it to view or open it.": "此範本已在清單中，可直接查看與開啟。",
   "Back": "返回",
-  "Parser: {0}": "解析器：{0}"
+  "Parser: {0}": "解析器：{0}",
+  "Taiwan": "台服",
+  "Taiwan (manual)": "台服（手動）",
+  "Traditional Chinese": "繁體中文",
+  "If initialization stalls, use /actcompat status to check the parser, Shared Host, and Generic Host.": "初始化未完成時，用 /actcompat status 依序檢查解析器、共用 Host 與通用 Host。",
+  "SilverDasher is disabled by default; enable it for notifications and network features.": "銀山雀兒預設關閉；啟用後提供通知與網路功能。",
+  "Expand the extension on the Extensions page and select its required permissions. Changes are saved and restart its Host.": "在控制中心的擴充功能頁展開對應擴充功能，勾選所需權限。變更會儲存並重新啟動對應 Host。",
+  "Grant permissions by purpose: network for updates and queries, files for caches and exports, game commands for commands and markers, and additional permissions for native features or advanced scripts.": "按用途授權：更新與查詢需要網路權限；快取與匯出需要檔案權限；指令與標點需要遊戲指令權限；原生功能與進階腳本需要各自的額外權限。",
+  "After updating an imported extension, restart Generic Host. Restart the game only if the Host cannot stop or DACT requires a reload.": "一般匯入擴充功能更新後，重新啟動通用 Host；只有 Host 無法停止或 DACT 要求重新載入時，才需要重新啟動遊戲。",
+  "The parser reads combat logs. The four bundled extensions use Shared Host; imported generic extensions use Generic Host.": "解析器讀取戰鬥紀錄；四個內建擴充功能使用共用 Host，一般匯入擴充功能使用通用 Host。",
+  "Imported generic ACT plugins: restart Generic Host.": "自行匯入的一般 ACT 外掛：重新啟動通用 Host。",
+  "Use /actcompat status to inspect the extension’s Shared or Generic Host, then restart that Host.": "用 /actcompat status 檢查擴充功能所在的共用或通用 Host，然後只重新啟動對應 Host。",
+  "After a file update, the running Host may still hold the old assembly. Restart its Shared or Generic Host; follow reload instructions for DACT updates.": "檔案更新後，執行中的 Host 可能仍使用舊組件。重新啟動對應的共用或通用 Host；DACT 本體更新時依提示重新載入。",
+  "SilverDasher uses Dalamud notifications in the foreground and Windows notifications in the background, falling back to Dalamud on failure. Check notification settings, Focus Assist, and Host logs.": "銀山雀兒在遊戲前景時使用衛月通知，背景時使用 Windows 通知，失敗時回退到衛月。請檢查通知設定、專注輔助與 Host 紀錄。",
+  "FoxTTS, PostNamazu, Triggernometry, and SilverDasher use Shared Host. Imported generic extensions use Generic Host. Both Hosts are isolated and run with standard-user privileges.": "FoxTTS、鯰魚精、Triggernometry 與銀山雀兒使用共用 Host；一般匯入擴充功能使用通用 Host。兩個 Host 相互隔離，皆以一般使用者權限執行。",
+  "What the four bundled extensions do.": "四個內建擴充功能的用途。",
+  "Mapping between Shared Host, Generic Host, and the parser.": "共用 Host、通用 Host 與解析器的對應關係。"
 }

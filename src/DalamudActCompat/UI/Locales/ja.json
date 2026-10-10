@@ -1514,5 +1514,21 @@
   "View existing overlay": "既存のオーバーレイを表示",
   "This template is already listed; select it to view or open it.": "このテンプレートは登録済みです。選択して表示・設定できます。",
   "Back": "戻る",
-  "Parser: {0}": "パーサー：{0}"
+  "Parser: {0}": "パーサー：{0}",
+  "Taiwan": "台湾",
+  "Taiwan (manual)": "台湾（手動）",
+  "Traditional Chinese": "繁体字中国語",
+  "If initialization stalls, use /actcompat status to check the parser, Shared Host, and Generic Host.": "初期化が進まない場合、/actcompat status でパーサー、共有 Host、汎用 Host を確認します。",
+  "SilverDasher is disabled by default; enable it for notifications and network features.": "SilverDasher は初期状態で無効です。有効にすると通知とネットワーク機能を利用できます。",
+  "Expand the extension on the Extensions page and select its required permissions. Changes are saved and restart its Host.": "拡張機能ページで対象を展開し、必要な権限を選択します。変更は保存され、対応する Host が再起動します。",
+  "Grant permissions by purpose: network for updates and queries, files for caches and exports, game commands for commands and markers, and additional permissions for native features or advanced scripts.": "用途に応じて権限を付与します。更新と検索にはネットワーク、キャッシュと出力にはファイル、コマンドとマーカーにはゲームコマンド、ネイティブ機能と高度なスクリプトには追加の権限が必要です。",
+  "After updating an imported extension, restart Generic Host. Restart the game only if the Host cannot stop or DACT requires a reload.": "インポートした拡張機能の更新後は汎用 Host を再起動します。ゲームの再起動は Host が停止できない場合や DACT の再読み込みが必要な場合に行います。",
+  "The parser reads combat logs. The four bundled extensions use Shared Host; imported generic extensions use Generic Host.": "パーサーが戦闘ログを読み取ります。内蔵の4拡張機能は共有 Host、一般のインポート拡張機能は汎用 Host を使用します。",
+  "Imported generic ACT plugins: restart Generic Host.": "一般のインポート ACT プラグイン：汎用 Host を再起動します。",
+  "Use /actcompat status to inspect the extension’s Shared or Generic Host, then restart that Host.": "/actcompat status で拡張機能の共有または汎用 Host を確認し、その Host を再起動します。",
+  "After a file update, the running Host may still hold the old assembly. Restart its Shared or Generic Host; follow reload instructions for DACT updates.": "ファイル更新後も Host が古いアセンブリを保持している場合があります。対応する共有または汎用 Host を再起動し、DACT 更新時は案内に従って再読み込みします。",
+  "SilverDasher uses Dalamud notifications in the foreground and Windows notifications in the background, falling back to Dalamud on failure. Check notification settings, Focus Assist, and Host logs.": "SilverDasher はゲームが前面なら Dalamud、背面なら Windows に通知します。失敗時は Dalamud に戻ります。通知設定、集中モード、Host ログを確認してください。",
+  "FoxTTS, PostNamazu, Triggernometry, and SilverDasher use Shared Host. Imported generic extensions use Generic Host. Both Hosts are isolated and run with standard-user privileges.": "FoxTTS、PostNamazu、Triggernometry、SilverDasher は共有 Host、一般のインポート拡張機能は汎用 Host を使用します。両 Host は分離され、標準ユーザー権限で動作します。",
+  "What the four bundled extensions do.": "内蔵の4拡張機能の用途。",
+  "Mapping between Shared Host, Generic Host, and the parser.": "共有 Host、汎用 Host とパーサーの対応関係。"
 }

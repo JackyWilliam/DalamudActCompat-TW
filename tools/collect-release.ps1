@@ -34,6 +34,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+throw 'Use tools/build-taiwan.ps1 to collect a Taiwan candidate. Main-channel publication is disabled in this checkout.'
 
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $pluginProject = Join-Path $projectRoot "src/DalamudActCompat"

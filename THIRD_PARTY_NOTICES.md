@@ -1,3 +1,5 @@
+> 台服分支说明：Matcha 未随台服候选包分发。下列历史来源说明保留用于源码归属核对。台服依赖来源与哈希见 tools/taiwan-dependencies.lock.json。
+
 # Third-party notices
 
 DalamudActCompat embeds compatibility components derived from

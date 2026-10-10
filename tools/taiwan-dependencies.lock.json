@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "gameVersion": "2026.09.14.0000.0000",
+  "dalamudApiLevel": 13,
+  "dalamudVersion": "13.0.0.16",
+  "dalamudArchiveUrl": "https://github.com/yanmucorp/Dalamud/releases/download/26-10-03-01/latest.7z",
+  "dalamudArchiveSha256": "6ab457a00b2f96468f7ac87a417358cf8d03da95d4a4bca645a6306f9c80db5a",
+  "dalamudSourceCommit": "eed420e2d1170a0804e5c6ae6f75f56cef31e0d9",
+  "clientStructsCommit": "e95eb0de74e54be840b15097ef65b6b252ba3c6f",
+  "unscrambler": "7.41.1",
+  "opcodeSource": "https://github.com/PlusoneChiang/IINACT/releases/tag/v1.13.9.7",
+  "opcodeArchiveSha256": "c2082b4e7d8513c13d258e899846fc4700deae5aa5bac7f2f3a58b1bf5c02966",
+  "extendedOpcodeSourceCommit": "714129fc99ecd918e2fe4c740e97abb250c759c5",
+  "packetHelperSourceCommit": "9f446033a80a0f13f1b0a7583cd280932e69b8e7",
+  "iinactUpstream": "https://github.com/PlusoneChiang/IINACT",
+  "iinactBranch": "tc/api13_net9",
+  "iinactCommit": "0788c177c5df622c9e20c4f00027b873732b5606",
+  "machinaCommit": "3cc6e1c50c28ea81d95a05e2b4bf4329ffac0b44",
+  "actPluginVersion": "3.0.3.1",
+  "silverDasherOpcodeDiscoverySource": "cycleapple/BossmodReborn@b838d4cccb8386df69de30d125c74a76bfc7155f",
+  "referenceSha256": {
+    "Dalamud.dll": "778e52de7df038b5eb682fcb49e5ad3ef702501672548e23a7884d8ae8e4c749",
+    "FFXIVClientStructs.dll": "61e475b826f0c4bd3fd1c36da0cf06f31888cb208e036d74c9e51798af34eb3c",
+    "Lumina.dll": "48647f35209381bbff142c334e72376a4835fdff82987cfe29885e3098e6fba0",
+    "Lumina.Excel.dll": "60f5b79864f634c766359e866ef29c690108b0f08061acfe01e98f430143b9cf",
+    "InteropGenerator.Runtime.dll": "e71423b8e2be7a0e321a29f38fcd9dbeed4ba748d20fe1dfd64dde207a9351b2",
+    "cimgui.dll": "04764fb4cb802fac06cc6ecf4f2807440ba4d89e175278077f8021f364e4aeac"
+  },
+  "actPluginSha256": "70a0dea620a8038ac75e6c060d563849e9953c50ea80f1c2c5262e198fdba43c",
+  "dactIinactCommit": "39af59ed29e634e4aaf4931bb4c84e623511ef89"
+}

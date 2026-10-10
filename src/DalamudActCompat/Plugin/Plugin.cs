@@ -50,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly PluginServices services;
     private readonly string clientLanguageName;
     private readonly byte? nativeClientLanguageCode;
+    private readonly ushort? taiwanFateInfoOpcode;
     private readonly WindowSystem windowSystem = new("DalamudActCompat");
     // Meters own their colors/opacity. Keep their old ID namespace so separating
     // them from the management skin does not reset saved positions or sizes.
@@ -230,6 +231,7 @@ public sealed class Plugin : IDalamudPlugin
         // keeps parser/FFLogs worker callbacks from reading a Dalamud service off-thread.
         clientLanguageName = dataManager.Language.ToString();
         nativeClientLanguageCode = ReadNativeClientLanguageCode(log);
+        taiwanFateInfoOpcode = TaiwanOpcodeDiscovery.TryRead(sigScanner, log);
         pictoActOverlay = new PictoActOverlayService(
             gameGui,
             sigScanner,
@@ -412,7 +414,7 @@ public sealed class Plugin : IDalamudPlugin
             () => configuration.Fflogs,
             paths.FflogsCacheFile,
             logger,
-            () => ResolveGameRegionSelection().EffectiveRegion == HostGameRegion.Chinese);
+            taiwanRankings: true);
         actRuntime = new SelfHostedActRuntime(
             pluginInterface,
             log,
@@ -448,7 +450,8 @@ public sealed class Plugin : IDalamudPlugin
             configuration.IsActCapabilityAllowed,
             () => configuration.ParserScope,
             () => Volatile.Read(ref observedPlayerIdentitySnapshot),
-            () => new(configuration.EncounterResetMode, configuration.EncounterResetSeconds));
+            () => new(configuration.EncounterResetMode, configuration.EncounterResetSeconds),
+            getGameRegion: () => ResolveGameRegionSelection().EffectiveRegion);
         actRuntime.ConfigureExternalPluginBridges(
             text => hostSupervisor.RequestTts(text, "game-side-act"),
             (action, payload) => hostSupervisor.InvokePluginAction(
@@ -4670,13 +4673,9 @@ public sealed class Plugin : IDalamudPlugin
         return $"{plugins}|{capabilities}";
     }
 
-    private bool IsMatchaConfiguredToRun()
-        => packageInstaller
-            .Discover(configuration.DisabledActPluginIds)
-            .Any(plugin =>
-                plugin.Enabled &&
-                bundledPluginManager.IsAllowedToLoad(plugin) &&
-                string.Equals(plugin.Manifest.Id, "matcha", StringComparison.OrdinalIgnoreCase));
+    // Matcha has no verified Taiwan adaptation and is intentionally excluded
+    // from this distribution, including configurations restored from another client.
+    private bool IsMatchaConfiguredToRun() => false;
 
     private bool IsGenericHostConfiguredToRun()
         => CreateGenericHostPermissionSnapshot().AllowedPluginIds.Count > 0;
@@ -5561,12 +5560,12 @@ public sealed class Plugin : IDalamudPlugin
                 name,
                 member.World.ValueNullable?.Name.ToString() ?? string.Empty,
                 member.ClassJob.ValueNullable?.Abbreviation.ToString() ?? string.Empty,
-                (member.ContentId != 0 && member.ContentId == playerState.ContentId) ||
+                (member.ContentId != 0 && unchecked((ulong)member.ContentId) == playerState.ContentId) ||
                 (member.EntityId != 0 && member.EntityId == playerState.EntityId),
                 member.MaxHP > 0 && member.CurrentHP == 0)
             {
                 EntityId = member.EntityId,
-                ContentId = member.ContentId,
+                ContentId = unchecked((ulong)member.ContentId),
                 WorldId = member.World.RowId,
                 JobId = unchecked((byte)member.ClassJob.RowId),
                 Level = member.Level,
@@ -5604,12 +5603,12 @@ public sealed class Plugin : IDalamudPlugin
 
     private GameRegionSelection ResolveGameRegionSelection()
         => GameRegionResolver.Resolve(
-            configuration.GameRegionMode,
+            GameRegionMode.TraditionalChinese,
             clientLanguageName,
             nativeClientLanguageCode);
 
     private HostGameContext GetHostGameContext()
-        => ResolveGameRegionSelection().ToHostContext();
+        => ResolveGameRegionSelection().ToHostContext() with { TaiwanFateInfoOpcode = taiwanFateInfoOpcode };
 
     private void SetGameRegionMode(GameRegionMode mode)
     {
@@ -5714,9 +5713,12 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     private string FormatGameRegion(HostGameRegion region)
-        => region == HostGameRegion.Chinese
-            ? text.Get("国服", "China")
-            : text.Get("国际服", "Global");
+        => region switch
+        {
+            HostGameRegion.Chinese => text.Get("国服", "China"),
+            HostGameRegion.TraditionalChinese => text.Get("台服", "Taiwan"),
+            _ => text.Get("国际服", "Global"),
+        };
 
     private static unsafe byte? ReadNativeClientLanguageCode(IPluginLog log)
     {

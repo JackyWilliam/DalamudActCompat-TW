@@ -16,6 +16,7 @@ internal static class FflogsRequestSmokeTests
     public static async Task RunAsync(string testRoot)
     {
         ValidateClassificationAndBackoff();
+        await ValidateTaiwanScopeAsync(testRoot);
         await ValidateQueuedAuthenticationFailureAsync(testRoot);
         await ValidateTemporaryFailuresAsync(testRoot);
         await ValidateCredentialRaceAsync(testRoot, disable: false);
@@ -28,6 +29,44 @@ internal static class FflogsRequestSmokeTests
         for (var iteration = 0; iteration < 32; iteration++)
             await ValidateShutdownAsync(testRoot);
         Console.WriteLine("FFLogs request protection smoke tests passed (offline HTTP + virtual time).");
+    }
+
+    private static async Task ValidateTaiwanScopeAsync(string testRoot)
+    {
+        await using var fixture = await Fixture.CreateAsync(testRoot, seedCache: true, taiwan: true);
+        Check(fixture.Service.ReferenceSnapshot.Region == "TW" && fixture.Service.ReferenceSnapshot.CurveCount == 0,
+            "Taiwan reused an imported CN/global curve.");
+        for (uint territory = 1256; territory <= 1263; territory++)
+            Check(TaiwanFflogsEncounterTable.TryResolve(territory, 2, out var duty) &&
+                  duty.EncounterId == 97 + (territory - 1256) / 2 && duty.Difficulty == 100 + territory % 2 && duty.Phase == 1,
+                "Taiwan Cruiserweight normal/savage mapping or whole-fight ranking is wrong.");
+        Check(!TaiwanFflogsEncounterTable.TryResolve(1327, 1, out _), "Taiwan accepted the wrong client tier.");
+        fixture.Handler.Respond = async (request, cancellationToken) =>
+        {
+            if (IsToken(request)) return await SuccessfulResponseAsync(request, cancellationToken);
+            using var query = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+            var variables = query.RootElement.GetProperty("variables");
+            if (query.RootElement.GetProperty("query").GetString()!.Contains("EncounterCatalog"))
+            {
+                Check(variables.GetProperty("zoneId").GetInt32() == 68, "Taiwan requested another ranking tier.");
+                return Response(200, """{"data":{"worldData":{"zone":{"id":68,"name":"AAC Cruiserweight","frozen":false,"encounters":[{"id":100,"name":"Howling Blade"}]}}}}""");
+            }
+            Check(variables.GetProperty("serverRegion").GetString() == "TW" &&
+                  variables.GetProperty("partition").ValueKind == JsonValueKind.Null &&
+                  variables.GetProperty("encounterId").GetInt32() == 100,
+                "Taiwan ranking request silently fell back to another population.");
+            return Response(200, """{"data":{"worldData":{"encounter":{"name":"Howling Blade","characterRankings":{"hasMorePages":false,"rankings":[{"amount":4000},{"amount":3000},{"amount":2000},{"amount":1000}]}}}}}""");
+        };
+        fixture.Service.NotifyTerritoryChanged(1263, "M8S");
+        fixture.Enable();
+        fixture.Service.RequestRefresh(PartyEncounter());
+        await DrainAsync(fixture.Service);
+        Check(fixture.Service.Status.State == FflogsEstimateState.Ready && fixture.Service.ReferenceSnapshot.CurveCount > 0,
+            "Taiwan curve was not loaded from its own population.");
+        using var cache = JsonDocument.Parse(await File.ReadAllTextAsync(fixture.CachePath));
+        Check(cache.RootElement.GetProperty("Curves").EnumerateArray().All(curve =>
+            curve.GetProperty("Region").GetString() == "TW" && curve.GetProperty("EncounterId").GetInt32() == 100),
+            "Taiwan cache retained foreign region/tier data.");
     }
 
     private static void ValidateClassificationAndBackoff()
@@ -376,16 +415,16 @@ internal static class FflogsRequestSmokeTests
         public FflogsEstimateService Service { get; }
         public string CachePath { get; }
 
-        private Fixture(string cachePath)
+        private Fixture(string cachePath, bool taiwan)
         {
             CachePath = cachePath;
             Settings.Enabled = false;
             var log = DispatchProxy.Create<IPluginLog, FflogsRequestLogProxy>();
             Log = (FflogsRequestLogProxy)(object)log;
-            Service = new FflogsEstimateService(() => Settings, cachePath, new PluginLogger(log), new HttpClient(Handler), Clock);
+            Service = new FflogsEstimateService(() => Settings, cachePath, new PluginLogger(log), new HttpClient(Handler), Clock, taiwanRankings: taiwan);
         }
 
-        public static async Task<Fixture> CreateAsync(string testRoot, bool seedCache = false)
+        public static async Task<Fixture> CreateAsync(string testRoot, bool seedCache = false, bool taiwan = false)
         {
             var cachePath = Path.Combine(testRoot, "fflogs-request-tests", Guid.NewGuid().ToString("N"), "cache.json");
             Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
@@ -396,7 +435,7 @@ internal static class FflogsRequestSmokeTests
                     [new FflogsCurveCacheEntry(104, "Lindwurm", "Paladin", DateTimeOffset.UtcNow,
                         [new FflogsCurvePoint(0, 1_000), new FflogsCurvePoint(100, 3_000)],
                         101, "CN", 9, "dps", FflogsEstimateService.CurrentCurveFormatVersion)])));
-            return new Fixture(cachePath);
+            return new Fixture(cachePath, taiwan);
         }
 
         public void Enable()

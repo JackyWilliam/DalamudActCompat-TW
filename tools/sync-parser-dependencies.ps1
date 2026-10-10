@@ -8,17 +8,10 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $iinactProjectPath = Join-Path $projectRoot "vendor/IINACT/IINACT/IINACT.csproj"
 $dependencyDirectory = Join-Path $projectRoot "vendor/IINACT/external_dependencies"
-$dalamudCandidates = @(
-    (Join-Path $env:APPDATA "XIVLauncherCN/addon/Hooks/dev"),
-    (Join-Path $env:APPDATA "XIVLauncher/addon/Hooks/dev")
-)
-$dalamudDirectory = $dalamudCandidates |
-    Where-Object { Test-Path -LiteralPath (Join-Path $_ "Mono.Cecil.dll") } |
-    Select-Object -First 1
-if ([string]::IsNullOrWhiteSpace($dalamudDirectory)) {
-    throw "Could not find Dalamud development assemblies containing Mono.Cecil.dll."
-}
-$dalamudDirectory = $dalamudDirectory.TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
+# This standalone checkout must never pick the CN launcher reference folder.
+$dalamudDirectory = if ($env:DALAMUD_HOME) { $env:DALAMUD_HOME } else { Join-Path $projectRoot '.deps/taiwan/dalamud' }
+& (Join-Path $PSScriptRoot 'build-taiwan.ps1') -ReferenceDirectory $dalamudDirectory -PrepareOnly | Out-Null
+$dalamudDirectory = [IO.Path]::GetFullPath($dalamudDirectory).TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
 [xml] $iinactProject = Get-Content -LiteralPath $iinactProjectPath -Raw
 $iinactVersion = [string] $iinactProject.Project.PropertyGroup.Version |
     Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |

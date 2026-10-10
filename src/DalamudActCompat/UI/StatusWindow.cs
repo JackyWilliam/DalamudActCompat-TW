@@ -207,41 +207,6 @@ public sealed class StatusWindow : Window
             }
         });
 
-        var matchaHost = getMatchaHostSnapshot();
-        DrawCard("runtime-matcha-host-card", text.Get("抹茶专属 Host", "Matcha dedicated Host"), 244, () =>
-        {
-            DactTheme.TextColored(
-                matchaHost.State == HostSupervisorState.Running ? IceBlue : Vector4.One,
-                $"{text.Get("进程", "Process")}: {LocalizeValue(matchaHost.State)}    " +
-                $"IPC: {LocalizeValue(matchaHost.IpcStatus)}");
-            ImGui.TextUnformatted(
-                $"{text.Get("有界队列", "Bounded queues")}: " +
-                $"control={matchaHost.ControlQueueLength}/{HostProtocol.ControlQueueCapacity}, " +
-                $"data={matchaHost.DataQueueLength}/{HostProtocol.DataQueueCapacity}, " +
-                $"network={matchaHost.MatchaNetworkQueueLength}/{HostProtocol.MatchaNetworkQueueCapacity}");
-            ImGui.TextUnformatted(
-                $"{text.Get("已丢弃抹茶网络事件", "Dropped Matcha network events")}: " +
-                $"{matchaHost.DroppedMatchaNetworkMessages}");
-            ImGui.TextUnformatted(
-                $"{text.Get("处理进度", "Processing progress")}: " +
-                $"{matchaHost.HostAcknowledgedSequence}/{matchaHost.LastWrittenSequence}");
-            ImGui.TextUnformatted(
-                $"{text.Get("资源", "Resources")}: " +
-                $"{matchaHost.HostWorkingSetBytes / (1024d * 1024d):0.0} MiB, " +
-                $"{matchaHost.HostThreadCount} {text.Get("线程", "threads")}");
-            ImGui.TextWrapped(
-                $"{text.Get("健康状态", "Health")}: {LocalizeValue(matchaHost.HealthState)} — {matchaHost.HealthDetail}");
-            if (DactTheme.Button(text.Get("重启抹茶 Host", "Restart Matcha Host")))
-            {
-                restartMatchaHost();
-            }
-            ImGui.SameLine();
-            if (DactTheme.Button(text.Get("停止抹茶 Host", "Stop Matcha Host")))
-            {
-                stopMatchaHost();
-            }
-        });
-
         var genericHost = getGenericHostSnapshot();
         DrawCard("runtime-generic-host-card", text.Get("通用第三方 Host", "Generic third-party Host"), 210, () =>
         {
@@ -293,26 +258,6 @@ public sealed class StatusWindow : Window
             });
         }
 
-        if (matchaHost.PluginHealth.Count > 0)
-        {
-            var height = Math.Clamp(72 + (matchaHost.PluginHealth.Count * 38), 118, 260);
-            DrawCard("runtime-matcha-plugin-health-card", text.Get("抹茶运行健康", "Matcha runtime health"), height, () =>
-            {
-                foreach (var plugin in matchaHost.PluginHealth)
-                {
-                    DactTheme.TextColored(IceBlue, plugin.PluginId);
-                    ImGui.SameLine();
-                    ImGui.TextWrapped(
-                        $"{LocalizeValue(plugin.State)}, events={plugin.CompletedEvents}, " +
-                        $"exceptions={plugin.Exceptions}, slow={plugin.SlowCalls}, " +
-                        $"last={plugin.LastDurationMilliseconds}ms" +
-                        (plugin.ActiveCallback is null
-                            ? string.Empty
-                            : $", active={plugin.ActiveMilliseconds}ms"));
-                }
-            });
-        }
-
         if (genericHost.PluginHealth.Count > 0)
         {
             var height = Math.Clamp(72 + (genericHost.PluginHealth.Count * 38), 118, 260);
@@ -348,24 +293,6 @@ public sealed class StatusWindow : Window
             });
         }
 
-        if (matchaHost.Diagnostics.Count > 0)
-        {
-            DrawCard("runtime-matcha-diagnostics-card", text.Get("最近抹茶 Host 异常", "Recent Matcha Host diagnostics"), 240, () =>
-            {
-                foreach (var diagnostic in matchaHost.Diagnostics.TakeLast(20).Reverse())
-                {
-                    ImGui.TextWrapped(
-                        $"[{diagnostic.PluginId}/{diagnostic.Phase}] " +
-                        $"{diagnostic.ExceptionType}: {diagnostic.Message} " +
-                        $"source={diagnostic.SourceAssembly}/" +
-                        $"{diagnostic.SourceType}.{diagnostic.SourceMethod}, " +
-                        $"thread={diagnostic.ThreadId}" +
-                        (diagnostic.IsWindowsFormsThread ? " (WinForms)" : string.Empty) +
-                        $", x{diagnostic.RepeatCount}");
-                }
-            });
-        }
-
         if (genericHost.Diagnostics.Count > 0)
         {
             DrawCard("runtime-generic-diagnostics-card", text.Get("最近通用 Host 异常", "Recent generic Host diagnostics"), 240, () =>
@@ -381,7 +308,6 @@ public sealed class StatusWindow : Window
 
         DrawStages(host, "postnamazu", text.Get("鲶鱼精邮差分阶段状态", "PostNamazu staged status"));
         DrawStages(host, "triggernometry", text.Get("Triggernometry 兼容状态", "Triggernometry compatibility status"));
-        DrawStages(matchaHost, "matcha", text.Get("抹茶兼容状态", "Matcha compatibility status"));
         foreach (var pluginId in genericHost.PluginStages
                      .Select(static stage => stage.PluginId)
                      .Distinct(StringComparer.OrdinalIgnoreCase))
@@ -392,8 +318,8 @@ public sealed class StatusWindow : Window
         DrawCard("runtime-safety-card", text.Get("安全边界", "Safety boundary"), 138, () =>
         {
             ImGui.TextWrapped(text.Get(
-                "FoxTTS、鲶鱼精邮差、Triggernometry 与银山雀儿保持在原共享 Host；抹茶独占专属 Host；用户自行安装且未特化的插件共用一个按需启动的通用 Host。三个边界互不连带崩溃，但都是普通用户权限的完整信任桌面进程。",
-                "FoxTTS, PostNamazu, Triggernometry, and SilverDasher stay in the original shared Host; Matcha owns its dedicated Host; user-installed non-specialized plugins share one on-demand generic Host. Failures do not cross these three boundaries, but every Host remains a full-trust standard-user desktop process."));
+                "FoxTTS、鲶鱼精、Triggernometry 和银山雀儿使用共享 Host；普通导入扩展使用通用 Host。两个 Host 相互隔离，均以普通用户权限运行。",
+                "FoxTTS, PostNamazu, Triggernometry, and SilverDasher use Shared Host. Imported generic extensions use Generic Host. Both Hosts are isolated and run with standard-user privileges."));
         });
     }
 

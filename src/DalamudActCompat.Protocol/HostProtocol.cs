@@ -97,6 +97,7 @@ public enum HostGameRegion
 {
     Global = 1,
     Chinese = 2,
+    TraditionalChinese = 4,
 }
 
 public enum HostClientLanguage
@@ -107,11 +108,16 @@ public enum HostClientLanguage
     French,
     Chinese,
     Korean,
+    TraditionalChinese,
 }
 
 public sealed record HostGameContext(
     HostGameRegion Region,
-    HostClientLanguage Language);
+    HostClientLanguage Language)
+{
+    // Optional so older Host handshakes remain readable; never substitute a CN opcode.
+    public ushort? TaiwanFateInfoOpcode { get; init; }
+}
 
 public sealed record HostHello(
     string Role,

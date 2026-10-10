@@ -1,5 +1,7 @@
 <Project>
   <PropertyGroup>
+    <!-- Independent Taiwan checkout: all projects use API 13 / .NET 9. -->
+    <DefineConstants>$(DefineConstants);DACT_TAIWAN</DefineConstants>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

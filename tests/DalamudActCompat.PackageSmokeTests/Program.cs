@@ -46,6 +46,13 @@ using RainbowMage.OverlayPlugin.MemoryProcessors.InCombat;
 using RainbowMage.OverlayPlugin.MemoryProcessors.Party;
 using RainbowMage.OverlayPlugin.WebSocket;
 
+#if DACT_TAIWAN
+// TC ships Lumina with AssemblyVersion 0 while Lumina.Excel references 6. Mirror
+// Dalamud's shared-assembly resolver when running these tests outside the loader.
+System.Runtime.Loader.AssemblyLoadContext.Default.Resolving += (_, name) =>
+    name.Name == "Lumina" ? typeof(Lumina.GameData).Assembly : null;
+#endif
+
 var testRoot = Path.Combine(Path.GetTempPath(), $"DalamudActCompat-{Guid.NewGuid():N}");
 Directory.CreateDirectory(testRoot);
 
@@ -183,6 +190,7 @@ try
     }
     ValidateSettingsSerializerMemberTypes();
     ValidateGameRegionSelection();
+    TaiwanCompatibilitySmokeTests.Run();
     ValidateActPluginDataCompatibility();
     ValidateActCustomTriggerCompatibility();
     ValidateSynchronousActInvocation();
@@ -232,10 +240,17 @@ try
         await ValidateLiveHtmlOverlayInputAsync(testRoot);
     }
     ValidateParserDependencyVersions();
+#if DACT_TAIWAN
+    TaiwanCompatibilitySmokeTests.ValidateUnscrambler();
+#else
     ValidateUnscramblerSupportPolicy();
+#endif
+#if !DACT_TAIWAN
     Patch756SmokeTests.Run();
+#endif
     ValidatePluginRepositoryMetadata();
-    Validate756Opcodes();
+    // Taiwan's own table and packet fixtures run above; the mainland 7.56 table
+    // is intentionally not a dependency of this standalone checkout.
     ValidateMeterRows();
     ValidateMeterLayout();
     ValidateIndependentMeterWindows();
@@ -642,8 +657,8 @@ static void ValidateGameRegionSelection()
     Assert(
         configuration.ApplyMigrations() &&
         configuration.Version == 17 &&
-        configuration.GameRegionMode == GameRegionMode.Auto,
-        "Existing configurations were not migrated to automatic region detection.");
+        configuration.GameRegionMode == GameRegionMode.TraditionalChinese,
+        "Existing configurations were not migrated to the Taiwan build profile.");
 
     configuration.GameRegionMode = GameRegionMode.Global;
     var snapshot = configuration.CreateSnapshot();
@@ -653,18 +668,14 @@ static void ValidateGameRegionSelection()
         configuration.GameRegionMode == GameRegionMode.Global,
         "A manual game-region override did not survive configuration snapshot restore.");
 
-    IINACT.FfxivActPluginWrapper.ConfigureRegion(
-        Dalamud.Game.ClientLanguage.English,
-        chineseRegionOverride: true);
-    Assert(
-        OpcodeManager.Instance.GameRegion == GameRegion.Chinese,
-        "The parser ignored a manual Chinese-region override on a Global-language client.");
-    IINACT.FfxivActPluginWrapper.ConfigureRegion(
-        Dalamud.Game.ClientLanguage.English,
-        chineseRegionOverride: false);
-    Assert(
-        OpcodeManager.Instance.GameRegion == GameRegion.Global,
-        "The parser ignored a manual Global-region override.");
+    foreach (var oldMainlandOverride in new[] { true, false })
+    {
+        IINACT.FfxivActPluginWrapper.ConfigureRegion(Dalamud.Game.ClientLanguage.English,
+            chineseRegionOverride: oldMainlandOverride);
+        Assert(OpcodeManager.Instance.GameRegion == GameRegion.TraditionalChinese,
+            "An imported CN/Global preference changed the standalone Taiwan parser.");
+    }
+
 }
 
 static void ValidateVersionedCompatibilityHostExtraction(string testRoot)
@@ -1788,50 +1799,14 @@ static void ValidatePluginRepositoryMetadata()
     var projectRoot = FindProjectRoot();
     using var document = JsonDocument.Parse(File.ReadAllText(
         Path.Combine(projectRoot, "repo", "pluginmaster.json")));
-    // The repository also contains the independent repair utility. Validate the
-    // main plugin by identity rather than assuming it is the only entry.
-    var entry = document.RootElement.EnumerateArray().Single(item =>
-        item.GetProperty("InternalName").GetString() == "DalamudActCompat");
-    var assemblyVersion = typeof(ControlCenterWindow).Assembly
-        .GetName()
-        .Version!
-        .ToString(4);
-    // Release tags retain the user-facing three/four-part version; CLR assembly
-    // versions always have four parts, so a three-part tag must not gain a suffix.
-    var project = System.Xml.Linq.XDocument.Load(Path.Combine(
-        projectRoot, "src", "DalamudActCompat", "DalamudActCompat.csproj"));
-    var releaseVersion = project.Descendants("Version").Single().Value;
-    var normalizedVersion = releaseVersion.Split('.').Length == 3
-        ? releaseVersion + ".0"
-        : releaseVersion;
-    var expectedDownloadSuffix = $"/v{releaseVersion}/DalamudActCompat-core.zip";
-    Assert(
-        normalizedVersion == assemblyVersion &&
-        entry.GetProperty("AssemblyVersion").GetString() == assemblyVersion &&
-        entry.GetProperty("DownloadLinkInstall").GetString() is { } installUrl &&
-        installUrl.EndsWith(expectedDownloadSuffix, StringComparison.Ordinal) &&
-        entry.GetProperty("DownloadLinkUpdate").GetString() is { } updateUrl &&
-        updateUrl.EndsWith(expectedDownloadSuffix, StringComparison.Ordinal) &&
-        entry.GetProperty("CanUnloadAsync").GetBoolean() &&
-        entry.GetProperty("DownloadLinkTesting").ValueKind == JsonValueKind.Null,
-        "Dalamud custom repository version or release download links drifted from the plugin assembly.");
-    var iconUrl = entry.GetProperty("IconUrl").GetString();
-    Assert(
-        Uri.TryCreate(iconUrl, UriKind.Absolute, out var iconUri) &&
-        iconUri.Scheme == Uri.UriSchemeHttps &&
-        iconUri.Host == "raw.githubusercontent.com" &&
-        iconUri.AbsolutePath.EndsWith(
-            "/src/DalamudActCompat/Assets/act-logo.jpg",
-            StringComparison.Ordinal),
-        "Dalamud custom repository does not expose the ACT logo through a public HTTPS IconUrl.");
-    Assert(
-        File.Exists(Path.Combine(
-            projectRoot,
-            "src",
-            "DalamudActCompat",
-            "Assets",
-            "act-logo.jpg")),
-        "The public custom-repository IconUrl target is missing from the source repository.");
+    Assert(document.RootElement.GetArrayLength() == 0,
+        "An unpublished Taiwan candidate must not advertise CN or historical repair downloads.");
+    using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(projectRoot,
+        "src", "DalamudActCompat", "bin", "Release", "DalamudActCompat.json")));
+    Assert(manifest.RootElement.GetProperty("DalamudApiLevel").GetInt32() == 13 &&
+           manifest.RootElement.GetProperty("Name").GetString()!.Contains("TW") &&
+           manifest.RootElement.GetProperty("ApplicableVersion").GetString() == "2026.09.14.0000.0000",
+        "Taiwan package metadata points at another client/API.");
 }
 
 static void ValidateBoundedHostQueue()
@@ -5402,8 +5377,8 @@ static void ValidatePostNamazuOverlayHandlerResponse()
 static void ValidateParserDependencyVersions()
 {
     Assert(
-        typeof(IINACT.Plugin).Assembly.GetName().Version == new Version(2, 10, 3, 8),
-        "IINACT is not at 2.10.3.8.");
+        typeof(IINACT.Plugin).Assembly.GetName().Version == new Version(1, 13, 9, 7),
+        "IINACT is not at Taiwan 1.13.9.7.");
     Assert(
         typeof(FFXIVMemory).Assembly.GetName().Version == new Version(0, 19, 108, 0),
         "OverlayPlugin Core is not at 0.19.108.");
@@ -5416,7 +5391,11 @@ static void ValidateParserDependencyVersions()
         "Release");
     AssertFileVersion(
         Path.Combine(runtimeDirectory, "Unscrambler.dll"),
+#if DACT_TAIWAN
+        "7.41.1.0",
+#else
         "7.56.1.0",
+#endif
         "Unscrambler.XIV");
     AssertFileVersion(
         Path.Combine(runtimeDirectory, "FFXIV_ACT_Plugin.dll"),
@@ -5426,7 +5405,7 @@ static void ValidateParserDependencyVersions()
     Assert(
         FetchDependencies.LogFormatIdentity.Matches(
             logfileAssemblyPath,
-            new Version(2, 10, 3, 8)),
+            new Version(1, 13, 9, 7)),
         $"FFXIV_ACT_Plugin.Logfile identifies a stale IINACT version: {FetchDependencies.LogFormatIdentity.ReadTemplate(logfileAssemblyPath)}");
 
     var overlayAssembly = typeof(FFXIVMemory).Assembly;
@@ -5463,7 +5442,7 @@ static void ValidateParserDependencyVersions()
     var logFormatType = logfileAssembly.GetType("FFXIV_ACT_Plugin.Logfile.LogFormat", throwOnError: true)!;
     var formatVersion = logFormatType.GetMethod("FormatVersion", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!;
     var header = (string)formatVersion.Invoke(Activator.CreateInstance(logFormatType, nonPublic: true), null)!;
-    Assert(header == "This is IINACT 2.10.3.8 (API 1.6.0) based on FFXIV_ACT_Plugin 3.0.3.1",
+    Assert(header == "This is IINACT 1.13.9.7 (API 1.6.0) based on FFXIV_ACT_Plugin 3.0.3.1",
         $"The actual FFLogs version header is stale: {header}");
     Console.WriteLine($"Verified FFLogs version header: {header}");
 }
@@ -5485,7 +5464,7 @@ static void ValidateSilverDasherPermissionIsolation()
         BundledActPluginCapabilities.FullPermissionConfirmation
             .Select(entry => entry.PluginId)
             .SequenceEqual(
-                new[] { "act.foxtts", "postnamazu", "triggernometry", "silverdasher", "matcha" },
+                new[] { "act.foxtts", "postnamazu", "triggernometry", "silverdasher" },
                 StringComparer.Ordinal),
         "The explicit full-permission confirmation does not preserve SilverDasher before the dedicated Matcha group.");
 }
@@ -5504,8 +5483,8 @@ static void ValidateMatchaPermissionIsolation()
         !BundledActPluginCapabilities.Matcha.Contains(ActCapability.NativeGameMemory),
         "Matcha does not expose its dedicated least-privilege capability declaration.");
     Assert(
-        BundledActPluginCapabilities.FullPermissionConfirmation[^1].PluginId == "matcha",
-        "Matcha is not the final independently confirmed permission group.");
+        BundledActPluginCapabilities.FullPermissionConfirmation.All(entry => entry.PluginId != "matcha"),
+        "The Taiwan build offers permissions for excluded Matcha.");
 }
 
 static async Task ValidateSilverDasherNotificationIpcAsync()
@@ -5627,6 +5606,7 @@ static async Task ValidatePostNamazuHeadingIpcAsync()
         "A stale PostNamazu heading crossed the game-side IPC validation boundary.");
 }
 
+#if !DACT_TAIWAN
 static void ValidateUnscramblerSupportPolicy()
 {
     var bundledPolicy = typeof(IINACT.Network.ZoneDownHookManager).GetMethod(
@@ -5849,6 +5829,8 @@ static void ValidateUnscramblerSupportPolicy()
         "A different region or Chinese game version is incorrectly marked ranking-safe.");
 }
 
+#endif
+
 static void AssertFileVersion(string path, string expected, string component)
 {
     Assert(File.Exists(path), $"{component} assembly is missing: {path}");
@@ -5870,10 +5852,10 @@ static async Task ValidateBundledDataRefreshAsync(string testRoot)
     var installer = new ActPluginPackageInstaller(paths);
     var configuration = new DalamudActCompat.Plugin.PluginConfiguration();
     var manager = new BundledActPluginManager(bundle, "test", installer, configuration, directoryIsBundleRoot: true);
-    var matcha = manager.Plugins.Single(plugin => plugin.Id == "matcha");
-    await manager.InstallAndAcknowledgeAsync([matcha], CancellationToken.None);
+    var silverdasher = manager.Plugins.Single(plugin => plugin.Id == "silverdasher");
+    await manager.InstallAndAcknowledgeAsync([silverdasher], CancellationToken.None);
     var installed = installer.Discover(configuration.DisabledActPluginIds).Single();
-    Assert(installed.Manifest.SourcePackageSha256 == matcha.PackageSha256,
+    Assert(installed.Manifest.SourcePackageSha256 == silverdasher.PackageSha256,
         "The installer did not record the actual complete-package identity.");
 
     // Simulate an older installation that knows only the DLL hash. It must not silently
@@ -5881,34 +5863,34 @@ static async Task ValidateBundledDataRefreshAsync(string testRoot)
     installed.Manifest.SourcePackageSha256 = string.Empty;
     File.WriteAllText(Path.Combine(installed.InstallDirectory, ActPluginManifest.FileName),
         JsonSerializer.Serialize(installed.Manifest));
-    Assert(manager.GetPendingDisclosures().Any(plugin => plugin.Id == "matcha") &&
+    Assert(manager.GetPendingDisclosures().Any(plugin => plugin.Id == "silverdasher") &&
         !manager.IsAllowedToLoad(installed), "A legacy manifest bypassed complete-package verification.");
-    configuration.DisabledActPluginIds.Add("matcha");
-    await manager.InstallAndAcknowledgeAsync([matcha], CancellationToken.None);
+    configuration.DisabledActPluginIds.Add("silverdasher");
+    await manager.InstallAndAcknowledgeAsync([silverdasher], CancellationToken.None);
 
-    const string dataEntry = "Plugins/Cafe.Matcha/data/world.json";
+    const string dataEntry = "Plugins/SilverDasher/data/opcodes.json";
     const string revisedData = "{\"data-only-update-fixture\":true}";
-    using (var archive = ZipFile.Open(matcha.PackagePath, ZipArchiveMode.Update))
+    using (var archive = ZipFile.Open(silverdasher.PackagePath, ZipArchiveMode.Update))
     {
         archive.GetEntry(dataEntry)!.Delete();
         using var writer = new StreamWriter(archive.CreateEntry(dataEntry).Open());
         writer.Write(revisedData);
     }
-    using (var source = File.OpenRead(matcha.PackagePath))
-        matcha.PackageSha256 = Convert.ToHexString(SHA256.HashData(source)).ToLowerInvariant();
+    using (var source = File.OpenRead(silverdasher.PackagePath))
+        silverdasher.PackageSha256 = Convert.ToHexString(SHA256.HashData(source)).ToLowerInvariant();
     File.WriteAllText(Path.Combine(bundle, BundledActPluginManager.LockFileName),
         JsonSerializer.Serialize(new BundledActPluginLock { SchemaVersion = 1, Plugins = manager.Plugins.ToList() }));
     manager.LoadBundle(bundle);
-    var updated = manager.GetPendingDisclosures().Single(plugin => plugin.Id == "matcha");
+    var updated = manager.GetPendingDisclosures().Single(plugin => plugin.Id == "silverdasher");
     Assert(!manager.IsAllowedToLoad(installer.Discover(configuration.DisabledActPluginIds).Single()),
         "Changed data remained loadable under the old acknowledgement.");
     await manager.InstallAndAcknowledgeAsync([updated], CancellationToken.None);
     var refreshed = installer.Discover(configuration.DisabledActPluginIds).Single();
     Assert(File.ReadAllText(Path.Combine(refreshed.InstallDirectory, dataEntry)) == revisedData &&
-        refreshed.Manifest.SourceSha256 == matcha.Sha256 &&
+        refreshed.Manifest.SourceSha256 == silverdasher.Sha256 &&
         refreshed.Manifest.SourcePackageSha256 == updated.PackageSha256 &&
         !refreshed.Enabled && manager.IsAllowedToLoad(refreshed) &&
-        manager.GetPendingDisclosures().All(plugin => plugin.Id != "matcha"),
+        manager.GetPendingDisclosures().All(plugin => plugin.Id != "silverdasher"),
         "Same-DLL data refresh was skipped, lost its identity, or re-enabled a disabled plugin.");
 }
 
@@ -5935,9 +5917,9 @@ static async Task ValidateBundledPluginDisclosureAsync(string testRoot)
     manager.LoadBundle(Path.Combine(bundleParent, BundledActPluginManager.DirectoryName));
 
     var pending = manager.GetPendingDisclosures();
-    Assert(pending.Count == 5, "A new install did not require all five bundled extension disclosures.");
+    Assert(pending.Count == 4, "A new install did not require all four bundled extension disclosures.");
     Assert(
-        manager.GetDisclosures().Count == 5,
+        manager.GetDisclosures().Count == 4,
         "The third-party notice did not expose every bundled extension source.");
     Assert(
         pending.Any(plugin =>
@@ -5968,20 +5950,9 @@ static async Task ValidateBundledPluginDisclosureAsync(string testRoot)
             plugin.PackageSha256 == "0999e18e103d0c9e8e7db3dfde12b23f1ff2df9565472d2aa832ebeaa3f7341d" &&
             File.Exists(plugin.PackagePath)),
         "SilverDasher complete-package version, support group, fixed hash, or bundled artifact is missing.");
-    Assert(
-        pending.Any(plugin =>
-            plugin.Id == "matcha" &&
-            plugin.Version == "26.9.26.1753" &&
-            plugin.License == "AGPL-3.0" &&
-            plugin.DisableOnlineUpdates &&
-            plugin.EnableAfterInstall &&
-            plugin.SourceUrl.EndsWith(
-                "/d4fffc60399549b9e9b8af9d6ca9bfec7378c7ff",
-                StringComparison.Ordinal) &&
-            plugin.PackageSha256 == "aac2fbaf31e37e932bc04e210e2a73c8824662ce30b90295875d14389b14e613" &&
-            plugin.Sha256 == "73606baabd1e8386e5900bec074db7d5fe898a26109f79c921a5187c222ca9bd" &&
-            File.Exists(plugin.PackagePath)),
-        "Matcha source commit, AGPL notice, fixed hashes, default-enable flag, or complete package is missing.");
+    Assert(pending.All(plugin => plugin.Id != "matcha") &&
+        !Directory.Exists(Path.Combine(bundleParent, "BundledActPlugins", "matcha")),
+        "The standalone Taiwan package still includes Matcha.");
 
     await manager.InstallAndAcknowledgeAsync(pending, CancellationToken.None);
     Assert(
@@ -5996,13 +5967,13 @@ static async Task ValidateBundledPluginDisclosureAsync(string testRoot)
         configuration.BundledPluginDisclosureKeys[migratedPluginId] == stableDisclosureKey,
         "A legacy Host-version-prefixed disclosure key was not migrated in place.");
     Assert(
-        manager.GetDisclosures().Count == 5 &&
+        manager.GetDisclosures().Count == 4 &&
         manager.GetDisclosures().All(plugin =>
             !string.IsNullOrWhiteSpace(plugin.Author) &&
             Uri.TryCreate(plugin.ProjectUrl, UriKind.Absolute, out _)),
         "Acknowledged DLL author and project URL disclosures disappeared from the notice.");
     var installed = installer.Discover(configuration.DisabledActPluginIds);
-    Assert(installed.Count == 5, "Not all bundled extensions were installed.");
+    Assert(installed.Count == 4, "Not all bundled extensions were installed.");
     var installedSilverDasher = installed.Single(plugin =>
         plugin.Manifest.Id == "silverdasher");
     Assert(
@@ -6013,34 +5984,6 @@ static async Task ValidateBundledPluginDisclosureAsync(string testRoot)
     Assert(
         installed.Where(plugin => plugin.Manifest.Id != "silverdasher").All(plugin => plugin.Enabled),
         "Installing SilverDasher unexpectedly changed another bundled extension's enabled state.");
-    var installedMatcha = installed.Single(plugin => plugin.Manifest.Id == "matcha");
-    Assert(
-        installedMatcha.Enabled &&
-        installed[^1].Manifest.Id == "matcha" &&
-        File.Exists(Path.Combine(
-            installedMatcha.InstallDirectory,
-            "Plugins",
-            "Cafe.Matcha",
-            "Cafe.Matcha.dll")) &&
-        File.Exists(Path.Combine(
-            installedMatcha.InstallDirectory,
-            "Plugins",
-            "Cafe.Matcha",
-            "data",
-            "fate.json")) &&
-        File.Exists(Path.Combine(
-            installedMatcha.InstallDirectory,
-            "Plugins",
-            "Cafe.Matcha",
-            "upstream",
-            "Cafe.Matcha.Upstream.dll")) &&
-        File.Exists(Path.Combine(
-            installedMatcha.InstallDirectory,
-            "Plugins",
-            "Cafe.Matcha",
-            "upstream",
-            "Cafe.Matcha.Runtime.bin")),
-        "The complete Matcha package was not installed enabled and ordered after SilverDasher.");
     Assert(
         File.Exists(Path.Combine(
             installedSilverDasher.InstallDirectory,
@@ -11289,7 +11232,11 @@ static async Task ValidateLiveHtmlOverlayInputAsync(string testRoot)
         "DalamudActCompat.ActRuntime",
         "bin",
         "Release",
+#if DACT_TAIWAN
+        "net9.0-windows",
+#else
         "net10.0-windows",
+#endif
         "win-x64",
         "WebView2Loader.dll");
     Assert(File.Exists(loaderPath), "The live WebView2 input smoke could not find WebView2Loader.dll.");
@@ -12274,7 +12221,11 @@ static void ValidateLegacyResourceRuntimeDependencies()
     var hostSpeech = FindArchiveEntry(archive, "host/System.Speech.dll");
     var runtimeSpeech = FindArchiveEntry(
         archive,
+#if DACT_TAIWAN
+        "runtimes/win/lib/net9.0/System.Speech.dll");
+#else
         "runtimes/win/lib/net10.0/System.Speech.dll");
+#endif
     Assert(
         hostSpeech is not null && runtimeSpeech is not null,
         "The Compatibility Host or Windows System.Speech runtime implementation is missing.");
@@ -12297,11 +12248,6 @@ static void ValidateLegacyResourceRuntimeDependencies()
         "BundledActPlugins/act.foxtts/LICENSE.txt",
         "BundledActPlugins/postnamazu/PostNamazu.dll",
         "BundledActPlugins/silverdasher/SilverDasher-0.6.0.4-cafe.zip",
-        "BundledActPlugins/matcha/Cafe.Matcha-26.9.26.1753-dact5.zip",
-        "BundledActPlugins/matcha/LICENSE.txt",
-        "BundledActPlugins/matcha/BUILD.md",
-        "BundledActPlugins/matcha/dact-compat.patch",
-        "BundledActPlugins/matcha/GenerateRuntimeData.ps1",
     };
     foreach (var required in requiredBundledPluginFiles)
     {
@@ -12313,6 +12259,10 @@ static void ValidateLegacyResourceRuntimeDependencies()
                     StringComparison.OrdinalIgnoreCase)),
             $"Bundled third-party plugin file is missing from the release package: {required}.");
     }
+
+    Assert(archive.Entries.All(entry => !entry.FullName.Replace('\\', '/').Contains(
+        "BundledActPlugins/matcha/", StringComparison.OrdinalIgnoreCase)),
+        "Matcha artifacts leaked into the standalone Taiwan package.");
 
     var bundledLockEntry = FindArchiveEntry(
         archive,

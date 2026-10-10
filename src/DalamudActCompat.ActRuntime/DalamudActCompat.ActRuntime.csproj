@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -94,7 +94,7 @@
              Link="WebView2Loader.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(PkgSystem_Formats_Nrbf)\lib\net10.0\System.Formats.Nrbf.dll">
+    <Content Include="$(PkgSystem_Formats_Nrbf)\lib\net9.0\System.Formats.Nrbf.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="..\..\vendor\IINACT\external_dependencies\FFXIV_ACT_Plugin.Common.dll">

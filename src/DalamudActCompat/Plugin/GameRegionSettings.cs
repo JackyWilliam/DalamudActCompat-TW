@@ -7,6 +7,7 @@ public enum GameRegionMode
     Auto,
     Chinese,
     Global,
+    TraditionalChinese,
 }
 
 public sealed record GameRegionSelection(
@@ -19,7 +20,7 @@ public sealed record GameRegionSelection(
 {
     public bool IsManualOverride => Mode != GameRegionMode.Auto;
 
-    public bool HasDetectedRegion => NativeClientLanguageCode is >= 0 and <= 4;
+    public bool HasDetectedRegion => NativeClientLanguageCode is (>= 0 and <= 4) or 7;
 
     public HostGameContext ToHostContext() => new(EffectiveRegion, ClientLanguage);
 }
@@ -34,13 +35,17 @@ public static class GameRegionResolver
         var normalizedLanguage = clientLanguageName?.Trim() ?? string.Empty;
         // Framework.ClientLanguage is the game's native client code. Unlike Dalamud's
         // data language, an international-client translation pack does not turn it into CN.
-        var detectedRegion = nativeClientLanguageCode == 4
-            ? HostGameRegion.Chinese
-            : HostGameRegion.Global;
+        var detectedRegion = nativeClientLanguageCode switch
+        {
+            4 => HostGameRegion.Chinese,
+            7 => HostGameRegion.TraditionalChinese,
+            _ => HostGameRegion.Global,
+        };
         var effectiveRegion = mode switch
         {
             GameRegionMode.Chinese => HostGameRegion.Chinese,
             GameRegionMode.Global => HostGameRegion.Global,
+            GameRegionMode.TraditionalChinese => HostGameRegion.TraditionalChinese,
             _ => detectedRegion,
         };
 
@@ -61,6 +66,7 @@ public static class GameRegionResolver
             "French" => HostClientLanguage.French,
             "ChineseSimplified" or "Chinese" => HostClientLanguage.Chinese,
             "Korean" => HostClientLanguage.Korean,
+            "TraditionalChinese" or "ChineseTraditional" => HostClientLanguage.TraditionalChinese,
             _ => HostClientLanguage.English,
         };
 }

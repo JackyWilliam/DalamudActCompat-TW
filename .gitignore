@@ -11,3 +11,6 @@ obj/
 !vendor/BundledActPlugins/silverdasher/*.zip
 !vendor/BundledActPlugins/matcha/*.zip
 artifacts/
+
+# Locked Taiwan reference downloads are build inputs, not source.
+.deps/

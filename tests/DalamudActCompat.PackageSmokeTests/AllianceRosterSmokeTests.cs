@@ -45,7 +45,11 @@ internal static class AllianceRosterSmokeTests
             memory->MainGroup.AllianceFlags = 1;
             foreach (var mapping in new[] { new byte[] { 0, 1, 2 }, new byte[] { 1, 0, 2 }, new byte[] { 2, 0, 1 } })
             {
+#if DACT_TAIWAN
+                mapping.CopyTo(new Span<byte>((byte*)&memory->MainGroup + 0x7FC0, 3));
+#else
                 mapping.CopyTo(memory->MainGroup.AllianceGroupIndices);
+#endif
                 // This reproduces the actual API contract that the former 24-index
                 // loop missed: Length/indexer expose eight, separate addresses expose sixteen.
                 Check(Enumerable.Range(0, 24).Count(i => party[i] is not null) == 8, "Fixture no longer reproduces the reported eight-player limit.");

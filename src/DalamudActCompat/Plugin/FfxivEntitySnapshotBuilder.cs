@@ -135,7 +135,11 @@ internal static class FfxivEntitySnapshotBuilder
             character?.NameId ?? 0,
             gameObject.BaseId,
             ToEntityId(gameObject.TargetObjectId),
+#if DACT_TAIWAN
+            gameObject.YalmDistanceX,
+#else
             gameObject.CurrentDistance,
+#endif
             partyTypes.GetValueOrDefault(gameObject.EntityId),
             gameObject.Address.ToInt64(),
             statuses);

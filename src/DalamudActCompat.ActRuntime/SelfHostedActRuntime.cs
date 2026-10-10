@@ -1,4 +1,5 @@
 using Advanced_Combat_Tracker;
+using DalamudActCompat.Protocol;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.ImGuiNotification;
 using Dalamud.Plugin;
@@ -50,7 +51,7 @@ public sealed class SelfHostedActRuntime : IDisposable
     private readonly IDalamudPluginInterface pluginInterface;
     private readonly IPluginLog log;
     private readonly IDataManager dataManager;
-    private readonly Func<bool> useChineseRegion;
+    private readonly Func<HostGameRegion> getGameRegion;
     private readonly Func<string> playerName;
     private readonly Func<IReadOnlyList<ActPlayerIdentity>> playerIdentities;
     private readonly Func<ActPlayerPose?> localPlayerPose;
@@ -177,12 +178,13 @@ public sealed class SelfHostedActRuntime : IDisposable
         Func<string, ActCapability, bool> permissionCheck,
         Func<ParserScope>? getParserScope = null,
         Func<IReadOnlyList<ActPlayerIdentity>>? observedPlayerIdentities = null,
-        Func<EncounterResetOptions>? getEncounterResetOptions = null)
+        Func<EncounterResetOptions>? getEncounterResetOptions = null,
+        Func<HostGameRegion>? getGameRegion = null)
     {
         this.pluginInterface = pluginInterface;
         this.log = log;
         this.dataManager = dataManager;
-        this.useChineseRegion = useChineseRegion;
+        this.getGameRegion = getGameRegion ?? (() => useChineseRegion() ? HostGameRegion.Chinese : HostGameRegion.Global);
         this.playerName = playerName;
         this.playerIdentities = playerIdentities;
         this.localPlayerPose = localPlayerPose;
@@ -774,18 +776,18 @@ public sealed class SelfHostedActRuntime : IDisposable
         configuration.PlayerCharacterName = playerName();
         try
         {
-            var chineseRegion = useChineseRegion();
+            var region = (Machina.FFXIV.GameRegion)getGameRegion();
             log.Information(
-                $"Starting ACT parser with region={(chineseRegion ? "Chinese" : "Global")}, " +
+                $"Starting ACT parser with region={region}, " +
                 $"language={dataManager.Language}.");
-            IINACT.FfxivActPluginWrapper.ConfigureRegion(dataManager.Language, chineseRegion);
+            IINACT.FfxivActPluginWrapper.ConfigureRegion(dataManager.Language, regionOverride: region);
             parser = new IINACT.FfxivActPluginWrapper(
                 configuration,
                 dataManager.Language,
                 chatGui,
                 framework,
                 condition,
-                chineseRegion);
+                regionOverride: region);
             // Keep the native hook disabled until every parser dependency has loaded.
             // A failed or stalled wrapper construction must not leave a half-started hook.
             zoneDownHookManager = new IINACT.Network.ZoneDownHookManager(

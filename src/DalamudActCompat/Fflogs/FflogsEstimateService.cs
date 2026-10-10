@@ -70,6 +70,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
 
     private readonly Func<FflogsSettings> getSettings;
     private readonly Func<bool> useChineseRankings;
+    private readonly bool taiwanRankings;
     private readonly string cachePath;
     private readonly PluginLogger logger;
     private readonly HttpClient httpClient;
@@ -104,9 +105,10 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         Func<FflogsSettings> getSettings,
         string cachePath,
         PluginLogger logger,
-        Func<bool>? useChineseRankings = null)
+        Func<bool>? useChineseRankings = null,
+        bool taiwanRankings = false)
         : this(getSettings, cachePath, logger,
-            new HttpClient { Timeout = TimeSpan.FromSeconds(20) }, TimeProvider.System, useChineseRankings)
+            new HttpClient { Timeout = TimeSpan.FromSeconds(20) }, TimeProvider.System, useChineseRankings, taiwanRankings)
     {
     }
 
@@ -117,7 +119,8 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         PluginLogger logger,
         HttpClient httpClient,
         TimeProvider timeProvider,
-        Func<bool>? useChineseRankings = null)
+        Func<bool>? useChineseRankings = null,
+        bool taiwanRankings = false)
     {
         this.getSettings = getSettings;
         this.cachePath = cachePath;
@@ -126,6 +129,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         this.timeProvider = timeProvider;
         requestGuard = new FflogsRequestGuard(timeProvider);
         this.useChineseRankings = useChineseRankings ?? (static () => true);
+        this.taiwanRankings = taiwanRankings;
         LoadCache();
         CanUseApi(GetSettingsSnapshot());
     }
@@ -174,7 +178,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         get
         {
             var context = GetEncounterContext();
-            return CurrentFflogsEncounterTable.TryResolve(
+            return TryResolveEncounter(
                 context.TerritoryId,
                 context.Phase,
                 out var encounter)
@@ -504,7 +508,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         }
 
         var settings = GetSettingsSnapshot();
-        if (!CurrentFflogsEncounterTable.TryResolve(territoryId, 1, out var encounter))
+        if (!TryResolveEncounter(territoryId, 1, out var encounter))
         {
             if (settings.Enabled &&
                 !string.IsNullOrWhiteSpace(settings.ClientId) &&
@@ -535,7 +539,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         CurrentFflogsEncounter? encounter = null;
         lock (encounterContextLock)
         {
-            var observedPhase = CurrentFflogsEncounterTable.ObservePhase(
+            var observedPhase = taiwanRankings ? 1 : CurrentFflogsEncounterTable.ObservePhase(
                 currentTerritoryId,
                 currentPhase,
                 actLine);
@@ -545,7 +549,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
             }
 
             currentPhase = observedPhase;
-            if (CurrentFflogsEncounterTable.TryResolve(
+            if (TryResolveEncounter(
                     currentTerritoryId,
                     currentPhase,
                     out var resolvedEncounter))
@@ -802,7 +806,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
             """;
         using var document = await QueryAsync(
             query,
-            new { zoneId = CurrentFflogsEncounterTable.ZoneId },
+            new { zoneId = ZoneId },
             generation,
             cancellationToken).ConfigureAwait(false);
         var result = new List<FflogsEncounterCatalogEntry>();
@@ -810,21 +814,21 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         if (zone.ValueKind == JsonValueKind.Null)
         {
             throw new InvalidOperationException(
-                $"The current FFLogs zone {CurrentFflogsEncounterTable.ZoneId} was not found.");
+                $"The current FFLogs zone {ZoneId} was not found.");
         }
 
         var frozen = zone.TryGetProperty("frozen", out var frozenValue) && frozenValue.ValueKind == JsonValueKind.True;
         if (frozen)
         {
             throw new InvalidOperationException(
-                $"FFLogs zone {CurrentFflogsEncounterTable.ZoneId} is frozen; update the current duty table before loading rankings.");
+                $"FFLogs zone {ZoneId} is frozen; update the current duty table before loading rankings.");
         }
 
-        var zoneName = zone.GetProperty("name").GetString() ?? CurrentFflogsEncounterTable.ZoneName;
+        var zoneName = zone.GetProperty("name").GetString() ?? ZoneName;
         foreach (var encounter in zone.GetProperty("encounters").EnumerateArray())
         {
             var encounterId = encounter.GetProperty("id").GetInt32();
-            if (!CurrentFflogsEncounterTable.IsSupportedEncounter(encounterId))
+            if (!IsSupportedEncounter(encounterId))
             {
                 continue;
             }
@@ -859,7 +863,7 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         long generation,
         CancellationToken cancellationToken)
     {
-        if (!CurrentFflogsEncounterTable.IsSupportedRanking(encounterId, difficulty))
+        if (!IsSupportedRanking(encounterId, difficulty))
         {
             throw new InvalidOperationException(
                 $"FFLogs encounter {encounterId} difficulty {difficulty} is outside the current ranking tier.");
@@ -1199,16 +1203,16 @@ public sealed class FflogsEstimateService : IAsyncDisposable
             }
 
             encounters = (cache.Encounters ?? [])
-                .Where(static encounter =>
-                    CurrentFflogsEncounterTable.IsSupportedEncounter(encounter.Id) &&
+                .Where(encounter =>
+                    IsSupportedEncounter(encounter.Id) &&
                     !encounter.Frozen)
                 .ToArray();
             catalogFetchedAt = encounters.Count > 0 ? cache.CatalogFetchedAt : default;
             foreach (var curve in cache.Curves ?? [])
             {
-                if (CurrentFflogsEncounterTable.IsSupportedRanking(curve.EncounterId, curve.Difficulty) &&
+                if (IsSupportedRanking(curve.EncounterId, curve.Difficulty) &&
                     curve.FormatVersion == CurrentCurveFormatVersion &&
-                    CurrentFflogsEncounterTable.TryGetRankingScope(
+                    TryGetCacheScope(
                         curve.Region,
                         curve.Partition,
                         out var scope) &&
@@ -1350,7 +1354,25 @@ public sealed class FflogsEstimateService : IAsyncDisposable
         => fetchedAt == default || fetchedAt.AddHours(Math.Clamp(hours, 1, 168)) <= DateTimeOffset.UtcNow;
 
     private FflogsRankingScope GetRankingScope()
-        => CurrentFflogsEncounterTable.GetRankingScope(useChineseRankings());
+        => taiwanRankings ? TaiwanFflogsEncounterTable.Scope : CurrentFflogsEncounterTable.GetRankingScope(useChineseRankings());
+
+    private int ZoneId => taiwanRankings ? TaiwanFflogsEncounterTable.ZoneId : CurrentFflogsEncounterTable.ZoneId;
+    private string ZoneName => taiwanRankings ? TaiwanFflogsEncounterTable.ZoneName : CurrentFflogsEncounterTable.ZoneName;
+    private bool IsSupportedEncounter(int id) => taiwanRankings
+        ? TaiwanFflogsEncounterTable.IsSupportedEncounter(id) : CurrentFflogsEncounterTable.IsSupportedEncounter(id);
+    private bool IsSupportedRanking(int id, int difficulty) => taiwanRankings
+        ? TaiwanFflogsEncounterTable.IsSupportedRanking(id, difficulty) : CurrentFflogsEncounterTable.IsSupportedRanking(id, difficulty);
+    private bool TryResolveEncounter(uint territory, int phase, out CurrentFflogsEncounter encounter) => taiwanRankings
+        ? TaiwanFflogsEncounterTable.TryResolve(territory, phase, out encounter)
+        : CurrentFflogsEncounterTable.TryResolve(territory, phase, out encounter);
+
+    private bool TryGetCacheScope(string region, int? partition, out FflogsRankingScope scope)
+    {
+        if (!taiwanRankings)
+            return CurrentFflogsEncounterTable.TryGetRankingScope(region, partition, out scope);
+        scope = TaiwanFflogsEncounterTable.Scope;
+        return string.Equals(region, scope.CacheRegion, StringComparison.OrdinalIgnoreCase) && partition == scope.Partition;
+    }
 
     private static bool CurveMatchesScope(
         FflogsCurveCacheEntry curve,

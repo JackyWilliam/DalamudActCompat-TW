@@ -55,6 +55,10 @@ if (effectiveArgs.Length is not (1 or 2 or 3))
 var hostExecutable = Path.GetFullPath(effectiveArgs[0]);
 var processLogs = new ConcurrentDictionary<int, ProcessLog>();
 var pluginRoot = effectiveArgs.Length == 3 ? Path.GetFullPath(effectiveArgs[1]) : null;
+// Triggernometry opens language XML with exclusive sharing. Parallel probes must
+// never load from the same vendor directory or show its modal error on the desktop.
+using var isolatedPlugins = pluginRoot is null ? null : new IsolatedPluginFixture(pluginRoot);
+pluginRoot = isolatedPlugins?.Root;
 var configRoot = effectiveArgs.Length == 3 ? Path.GetFullPath(effectiveArgs[2]) : null;
 var triggernometryAssembly = effectiveArgs.Length == 2
     ? Path.GetFullPath(effectiveArgs[1])
@@ -152,17 +156,7 @@ if (!string.IsNullOrWhiteSpace(silverDasherRoot) && Directory.Exists(silverDashe
     ValidateSilverDasherAssemblyRewrite(silverDasherRoot);
     await ValidateSilverDasherLoadsOutOfProcessAsync(silverDasherRoot);
 }
-var matchaPackage = Path.Combine(
-    FindProjectRoot(),
-    "vendor",
-    "BundledActPlugins",
-    "matcha",
-    "Cafe.Matcha-26.9.26.1753-dact5.zip");
-if (File.Exists(matchaPackage))
-{
-    ValidateMatchaAssemblyContract(matchaPackage);
-    await ValidateMatchaLoadsOutOfProcessAsync(matchaPackage);
-}
+// Matcha is not distributed for Taiwan; its source fixtures remain available for upstream maintenance.
 if (pluginRoot is not null && configRoot is not null)
 {
     await ValidateLegacyPluginsLoadOutOfProcessAsync();
@@ -181,10 +175,6 @@ if (!string.IsNullOrWhiteSpace(silverDasherRoot))
 {
     completion += " The original SilverDasher loader/core rewrite test passed without changing its DLLs.";
 }
-if (File.Exists(matchaPackage))
-{
-    completion += " The hash-pinned Matcha source bridge, real dedicated-Host load, bidirectional network, notification, and unload tests passed.";
-}
 if (pluginRoot is not null)
 {
     completion +=
@@ -197,6 +187,10 @@ Console.WriteLine(completion);
 void ValidateFfxivRegionContext()
 {
     var repository = new FfxivDataRepository();
+    repository.SetGameContext(new HostGameContext(HostGameRegion.TraditionalChinese, HostClientLanguage.TraditionalChinese));
+    Assert(repository.GetGameRegion() == 4 &&
+        repository.GetSelectedLanguageID() == FFXIV_ACT_Plugin.Common.Language.TraditionalChinese,
+        "The Taiwan region/language did not reach the legacy ACT repository.");
     repository.SetGameContext(new HostGameContext(
         HostGameRegion.Global,
         HostClientLanguage.Japanese));
@@ -4293,14 +4287,24 @@ void ValidateSilverDasherAssemblyRewrite(string sourceRoot)
         .Children<JObject>()
         .ToDictionary(item => item.Value<string>("name")!, StringComparer.Ordinal);
     Assert(
-        normalizedOpcodePayload.Value<string>("version") == "20260917" &&
-        normalizedOpcodes["InitZone"].Value<string>("cn") == "0x032B" &&
-        normalizedOpcodes["InitZone"].Value<string>("global") == "0x032B" &&
-        normalizedOpcodes["FateInfo"].Value<string>("cn") == "0x0154" &&
-        normalizedOpcodes["FateInfo"].Value<string>("global") == "0x0154" &&
-        normalizedOpcodes["ActorControlSelf"].Value<string>("cn") == "0x0204" &&
-        normalizedOpcodes["ActorControlSelf"].Value<string>("global") == "0x0204",
-        "SilverDasher opcode data was not normalized to Chinese / Global 7.56.");
+        normalizedOpcodePayload.Value<string>("version") == "20260914" &&
+        normalizedOpcodes["InitZone"].Value<string>("cn") == "0x00EB" &&
+        normalizedOpcodes["InitZone"].Value<string>("global") == "0x00EB" &&
+        normalizedOpcodes["FateInfo"].Value<string>("cn") == "0xF009" &&
+        normalizedOpcodes["FateInfo"].Value<string>("global") == "0xF009" &&
+        normalizedOpcodes["ActorControlSelf"].Value<string>("cn") == "0x0111" &&
+        normalizedOpcodes["ActorControlSelf"].Value<string>("global") == "0x0111",
+        "SilverDasher did not use TW opcodes or guessed an undiscovered FateInfo opcode.");
+    var configureGame = typeof(HostPluginBridge).GetMethod("ConfigureGameContext", BindingFlags.Static | BindingFlags.NonPublic)!;
+    configureGame.Invoke(null, [new HostGameContext(HostGameRegion.TraditionalChinese, HostClientLanguage.TraditionalChinese)
+        { TaiwanFateInfoOpcode = 0x0260 }]);
+    var discovered = JObject.Parse(HostPluginBridge.NormalizeSilverDasherOpcodePayload(normalizedOpcodePayload.ToString()));
+    Assert(discovered["data"]!.Children<JObject>().Single(item => item.Value<string>("name") == "FateInfo")
+        .Value<string>("cn") == "0x0260", "The verified Taiwan FateInfo handshake did not reach SilverDasher.");
+    configureGame.Invoke(null, [new HostGameContext(HostGameRegion.TraditionalChinese, HostClientLanguage.TraditionalChinese)]);
+    var reset = JObject.Parse(HostPluginBridge.NormalizeSilverDasherOpcodePayload(discovered.ToString()));
+    Assert(reset["data"]!.Children<JObject>().Single(item => item.Value<string>("name") == "FateInfo")
+        .Value<string>("cn") == "0xF009", "A new handshake reused stale Taiwan opcode discovery.");
     var judge = rewrittenCore
                        .GetType("SilverDasher.ACT.Doppelgangers.Tailor", throwOnError: true)!
                        .GetMethod(

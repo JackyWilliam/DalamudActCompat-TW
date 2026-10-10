@@ -38,6 +38,7 @@ public static partial class HostPluginBridge
     private static readonly ConcurrentDictionary<string, PendingOverlayCall> PendingOverlayCalls =
         new(StringComparer.Ordinal);
     private static readonly FfxivDataRepository FfxivRepositoryInstance = new();
+    private static int taiwanFateInfoOpcode;
     private static readonly object TriggerZoneListenerLock = new();
     private static readonly object PostNamazuQueueLock = new();
     private static readonly object PostNamazuTaskLock = new();
@@ -107,6 +108,10 @@ public static partial class HostPluginBridge
     {
         ArgumentNullException.ThrowIfNull(gameContext);
         FfxivRepositoryInstance.SetGameContext(gameContext);
+        Volatile.Write(ref taiwanFateInfoOpcode,
+            gameContext.Region == HostGameRegion.TraditionalChinese &&
+            gameContext.TaiwanFateInfoOpcode is > 0 and < 0x8000
+                ? gameContext.TaiwanFateInfoOpcode.Value : 0);
         Console.WriteLine(
             $"game context registered for ACT compatibility: " +
             $"region={gameContext.Region}, language={gameContext.Language}");
@@ -252,11 +257,11 @@ public static partial class HostPluginBridge
         var replacements = new Dictionary<string, (string Chinese, string Global)>(
             StringComparer.Ordinal)
         {
-            ["InitZone"] = ("0x032B", "0x032B"),
-            // Matcha upstream 3e4ecb4 verifies this value for CN and Global; the bundled
-            // SilverDasher table predates 7.56h and cannot safely be used unchanged.
-            ["FateInfo"] = ("0x0154", "0x0154"),
-            ["ActorControlSelf"] = ("0x0204", "0x0204"),
+            ["InitZone"] = ("0x00EB", "0x00EB"),
+            // SilverDasher has two legacy region choices. Both must use this Taiwan
+            // build's table, including the game-verified dispatch value from the handshake.
+            ["FateInfo"] = (TaiwanFateInfo(), TaiwanFateInfo()),
+            ["ActorControlSelf"] = ("0x0111", "0x0111"),
         };
         var found = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in data.OfType<JObject>())
@@ -278,9 +283,13 @@ public static partial class HostPluginBridge
             return payload;
         }
 
-        root["version"] = "20260917";
+        root["version"] = "20260914";
         return root.ToString(Newtonsoft.Json.Formatting.None);
     }
+
+    private static string TaiwanFateInfo()
+        => Volatile.Read(ref taiwanFateInfoOpcode) is > 0 and < 0x8000 and var opcode
+            ? $"0x{opcode:X4}" : "0xF009";
 
     public static Process GetSilverDasherGameProcess()
     {

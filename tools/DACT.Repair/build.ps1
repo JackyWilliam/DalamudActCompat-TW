@@ -5,6 +5,7 @@ param(
     [string] $PreviewPath = '-'
 )
 $ErrorActionPreference = 'Stop'
+throw 'The historical CN repair payload is not compatible with Taiwan; do not distribute it from this checkout.'
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 if (-not $CorePackage) {
