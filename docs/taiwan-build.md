@@ -16,6 +16,7 @@
 - Dalamud：yanmucorp 13.0.0.16，遊戲版本 `2026.09.14.0000.0000`。
 - FFXIV_ACT_Plugin 3.0.3.1、Unscrambler 7.41.1；完整來源與 SHA-256 見 `tools/taiwan-dependencies.lock.json`。
 - DACT 介面、嵌入式 ACT 與 Host 功能在台服上游分支中重新合入，原工作目錄保持不變。
+- 功能與原專案 `main` 0.4.5.15 同步（合併原專案 0.4.5.8–0.4.5.15 的介面、帳號、Host、觸發器與繪圖修復），隨包 Triggernometry 為 2.3.0.0。原專案的國服／國際服 7.57 解析依賴、收包簽名與操作碼不適用台服，不隨同步帶入；台服仍使用上列依賴鏈與自己的操作碼表。
 
 安裝 .NET SDK 10（用於 slnx）、.NET 9 Windows Desktop 執行庫與 7-Zip，並遞迴檢出子模組：
 
@@ -29,7 +30,7 @@ cd DalamudActCompat-TW
 
 指令碼驗證引用雜湊、構建完整解決方案、執行離線 smoke，並生成 `artifacts/taiwan/DalamudActCompat-TW-candidate.zip` 與 SHA-256。API 13 模組和 Host 均面向 .NET 9；打包工具版本不代表遊戲執行時 API。
 
-台服獨立訂閱已提供 **0.4.5.7 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
+台服獨立訂閱已提供 **0.4.5.15 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
 
 ```text
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json

@@ -4,9 +4,10 @@ using Dalamud.Bindings.ImGui;
 namespace DalamudActCompat.UI;
 
 internal sealed record SkinPalette(Vector4 Surface, Vector4 Raised, Vector4 Hover,
-    Vector4 Gold, Vector4 Accent, Vector4 Text, Vector4 Muted, Vector4 Border, bool Light = false, bool Glass = false, bool Rain = false);
+    Vector4 Gold, Vector4 Accent, Vector4 Text, Vector4 Muted, Vector4 Border, bool Light = false, bool Glass = false, bool Rain = false,
+    UltimateStyle? Ultimate = null);
 
-internal static class DactTheme
+internal static partial class DactTheme
 {
     public static unsafe void PreparePopupPosition(string id)
     {
@@ -32,15 +33,21 @@ internal static class DactTheme
         new(.78f, .66f, .36f, 1), new(.42f, .78f, .96f, 1), Vector4.One, new(.65f, .70f, .76f, 1), new(.34f, .29f, .18f, 1));
 
     public static GameSkinAssets? GameAssets { get; set; }
+    public static UltimateSkinAssets? UltimateAssets { get; set; }
     public static LiquidGlassRenderer? GlassRenderer { get; set; }
+    // Callers mark buttons whose window is already open, and title-bar buttons that should
+    // stay plain; ultimate skins draw those two kinds differently from ordinary actions.
+    internal static int OpenButtonDepth { get; set; }
+    internal static int PlainButtonDepth { get; set; }
     public static string CurrentSkin { get; private set; } = SkinCatalog.Default;
     public static SkinPalette Palette { get; private set; } = DefaultPalette;
-    internal static bool UsesSolidControls => CurrentSkin != SkinCatalog.Default && !Palette.Light && !Palette.Glass && !Palette.Rain;
+    internal static bool UsesSolidControls => CurrentSkin != SkinCatalog.Default && !Palette.Light && !Palette.Glass;
     private static readonly ImGuiCol[] FrameSlots = [ImGuiCol.WindowBg, ImGuiCol.ChildBg, ImGuiCol.PopupBg, ImGuiCol.Border, ImGuiCol.Separator,
         ImGuiCol.FrameBg, ImGuiCol.FrameBgHovered, ImGuiCol.FrameBgActive, ImGuiCol.Button,
         ImGuiCol.ButtonHovered, ImGuiCol.ButtonActive, ImGuiCol.Header, ImGuiCol.HeaderHovered,
         ImGuiCol.HeaderActive, ImGuiCol.CheckMark, ImGuiCol.SliderGrab, ImGuiCol.SliderGrabActive,
-        ImGuiCol.Text, ImGuiCol.TextDisabled];
+        ImGuiCol.Text, ImGuiCol.TextDisabled, ImGuiCol.TitleBg, ImGuiCol.TitleBgActive, ImGuiCol.TitleBgCollapsed,
+        ImGuiCol.TableHeaderBg];
     public static SkinPalette For(string id) => id switch
     {
         // Content colors accompany the original Light-theme textures loaded locally.
@@ -66,6 +73,7 @@ internal static class DactTheme
             Rgb(0xFFFFFF), Rgb(0xF5F5F5), Rgb(0xA3A3A3), Rgb(0x383838)),
         SkinCatalog.RainyWindow => new(Rgb(0x1D2C38), Rgb(0x2A3D4B) with { W = .92f }, Rgb(0x3C5666), Rgb(0xC6D9E1),
             Rgb(0x9CCAD9), Rgb(0xEDF4F7), Rgb(0xB0C4CE), Rgb(0x58717F), Rain: true),
+        _ when UltimateSkins.Palette(id) is { } ultimate => ultimate,
         _ => DefaultPalette,
     };
 
@@ -112,14 +120,24 @@ internal static class DactTheme
     {
         var color = slot switch
         {
+            // Ultimate inputs sit in a recessed groove darker than the cards around them.
+            ImGuiCol.FrameBg when Palette.Ultimate is { } ultimate => ultimate.Groove,
+            ImGuiCol.FrameBgHovered or ImGuiCol.FrameBgActive when Palette.Ultimate is { } ultimate => Vector4.Lerp(ultimate.Groove, ultimate.FaceHover, .5f),
             ImGuiCol.ChildBg when Palette.Glass || Palette.Rain => Vector4.Zero,
             // Menus need their own contrast scrim above a busy game scene.
             ImGuiCol.PopupBg when Palette.Glass => Palette.Surface with { W = .96f },
             ImGuiCol.WindowBg or ImGuiCol.ChildBg or ImGuiCol.PopupBg => Palette.Surface,
             ImGuiCol.Border or ImGuiCol.Separator => Palette.Border,
+            ImGuiCol.TitleBg or ImGuiCol.TitleBgCollapsed => Palette.Surface,
+            ImGuiCol.TitleBgActive or ImGuiCol.TableHeaderBg => Palette.Hover,
+            ImGuiCol.Button when Palette.Light => Palette.Hover,
+            ImGuiCol.ButtonHovered when Palette.Light => Vector4.Lerp(Palette.Hover, Palette.Accent, .12f),
+            ImGuiCol.ButtonActive when Palette.Light => Vector4.Lerp(Palette.Hover, Palette.Accent, .22f),
             ImGuiCol.Button when UsesSolidControls => Vector4.Lerp(Palette.Hover, Palette.Accent, .08f),
             ImGuiCol.ButtonHovered when UsesSolidControls => Vector4.Lerp(Palette.Hover, Palette.Accent, .20f),
-            ImGuiCol.ButtonActive when UsesSolidControls => Vector4.Lerp(Palette.Hover, Palette.Accent, .30f),
+            // Rain's blue-gray base is lighter; cap its pressed tint to retain
+            // readable pale text while still separating all three states.
+            ImGuiCol.ButtonActive when UsesSolidControls => Vector4.Lerp(Palette.Hover, Palette.Accent, Palette.Rain ? .24f : .30f),
             ImGuiCol.FrameBg or ImGuiCol.Button => Palette.Raised,
             ImGuiCol.FrameBgHovered or ImGuiCol.ButtonHovered or ImGuiCol.HeaderHovered => Palette.Hover,
             ImGuiCol.FrameBgActive or ImGuiCol.ButtonActive or ImGuiCol.HeaderActive => Palette.Hover,
@@ -146,6 +164,14 @@ internal static class DactTheme
         }
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Palette.Light || Palette.Glass ? 12 : 5);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, Palette.Light || UsesSolidControls ? 1 : 0);
+        if (Palette.Light)
+        {
+            // The game button has rounded end caps, unlike ImGui's rectangular
+            // default. Share this padding with layout measurements and native controls.
+            var padding = ImGui.GetStyle().FramePadding;
+            ImGui.PushStyleVar(ImGuiStyleVar.FramePadding,
+                new Vector2(Math.Max(padding.X, 14 * Math.Max(.75f, ImGui.GetFontSize() / 17f)), padding.Y));
+        }
         if (Palette.Glass) ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 14 * Math.Max(.75f, ImGui.GetFontSize() / 17f));
         var extraColors = 0;
         if (Palette.Glass || Palette.Rain || CurrentSkin == SkinCatalog.Obsidian)
@@ -157,7 +183,7 @@ internal static class DactTheme
                 ImGui.PushStyleColor(slot, Palette.Muted with { W = .45f });
             extraColors = 9;
         }
-        return new Scope(FrameSlots.Length + (Palette.Light ? 3 : 0) + extraColors, Palette.Glass ? 3 : 2);
+        return new Scope(FrameSlots.Length + (Palette.Light ? 3 : 0) + extraColors, Palette.Glass || Palette.Light ? 3 : 2);
     }
 
     public static bool Button(string label, Vector2 size = default) => DrawButton(label, size, false);
@@ -302,7 +328,7 @@ internal static class DactTheme
         var iconSize = Math.Min(size.X, size.Y);
         if (!GameAssets.Icon(icon, min + (size - new Vector2(iconSize)) * .5f, iconSize, ImGui.IsItemActive()))
             ImGui.GetWindowDrawList().AddText(min, ImGui.GetColorU32(Palette.Text), fallback);
-        if (ImGui.IsItemFocused()) ImGui.GetWindowDrawList().AddRect(min, min + size, ImGui.GetColorU32(Palette.Accent), 4);
+        if (ShowKeyboardFocus) ImGui.GetWindowDrawList().AddRect(min, min + size, ImGui.GetColorU32(Palette.Accent), 4);
         return pressed;
     }
 
@@ -334,6 +360,24 @@ internal static class DactTheme
 
     public static bool Checkbox(string label, ref bool value)
     {
+        if (Palette.Ultimate is { } ultimate)
+        {
+            // ImGui keeps the hit target, label and keyboard behaviour; only the box is repainted.
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.FrameBgActive, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.CheckMark, Vector4.Zero);
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0);
+            var toggled = ImGui.Checkbox(label, ref value);
+            ImGui.PopStyleVar(); ImGui.PopStyleColor(4);
+            var fontScale = Math.Max(.75f, ImGui.GetFontSize() / 17f);
+            var frameHeight = ImGui.GetFrameHeight();
+            var box = Math.Min(frameHeight - 2, 19 * fontScale);
+            var boxMin = ImGui.GetItemRectMin() + new Vector2((frameHeight - box) * .5f);
+            UltimateSkins.DrawCheckbox(ImGui.GetWindowDrawList(), boxMin, box, value, ImGui.IsItemHovered(), ultimate, fontScale);
+            if (ShowKeyboardFocus) ImGui.GetWindowDrawList().AddRect(boxMin - new Vector2(2), boxMin + new Vector2(box + 2), ImGui.GetColorU32(Palette.Accent), 4);
+            return toggled;
+        }
         if (!Palette.Light || GameAssets is null) return ImGui.Checkbox(label, ref value);
         ImGui.PushStyleColor(ImGuiCol.FrameBg, Vector4.Zero);
         ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, Vector4.Zero);
@@ -355,6 +399,33 @@ internal static class DactTheme
 
     private static bool DrawButton(string label, Vector2 size, bool small)
     {
+        // Transparent buttons (title-bar icons) keep their flat ImGui look in every skin.
+        if (Palette.Ultimate is { } ultimate && ImGui.GetStyle().Colors[(int)ImGuiCol.Button] is { W: > 0 } fill)
+        {
+            var danger = !IsPaletteColor(fill) && fill.X > fill.Y * 1.7f && fill.X > fill.Z * 1.7f;
+            var textColor = ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
+            ImGui.PushStyleColor(ImGuiCol.Text, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Zero);
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 0);
+            var clicked = small ? ImGui.SmallButton(label) : ImGui.Button(label, size);
+            ImGui.PopStyleVar(); ImGui.PopStyleColor(4);
+            if (!ImGui.IsItemVisible()) return clicked;
+            var itemMin = ImGui.GetItemRectMin(); var itemMax = ImGui.GetItemRectMax();
+            var list = ImGui.GetWindowDrawList();
+            var fontScale = Math.Max(.75f, ImGui.GetFontSize() / 17f);
+            // The open style's accent-tinted fill can lean red, so the explicit open mark wins.
+            var look = OpenButtonDepth > 0 ? UltimateSkins.ButtonLook.Open : danger ? UltimateSkins.ButtonLook.Danger : UltimateSkins.ButtonLook.Normal;
+            var held = ImGui.IsItemActive();
+            UltimateSkins.DrawButton(list, itemMin, itemMax, look, ImGui.IsItemHovered(), held, !small && PlainButtonDepth == 0, ultimate, fontScale);
+            if (ShowKeyboardFocus) list.AddRect(itemMin - new Vector2(2), itemMax + new Vector2(2), ImGui.GetColorU32(Palette.Accent), 5);
+            var caption = label.Split("##", 2)[0];
+            list.PushClipRect(itemMin, itemMax, true);
+            list.AddText(CenteredTextPosition(caption, itemMin, itemMax) + (held ? new Vector2(0, 1) : Vector2.Zero), ImGui.GetColorU32(textColor), caption);
+            list.PopClipRect();
+            return clicked;
+        }
         if (Palette.Glass)
         {
             // Let ImGui own focus, keyboard navigation, hit testing and disabled state;
@@ -375,7 +446,7 @@ internal static class DactTheme
             glassDraw.PushClipRect(glassMin, glassMax, true);
             glassDraw.AddText(CenteredTextPosition(caption, glassMin, glassMax), ImGui.GetColorU32(textColor), caption);
             glassDraw.PopClipRect();
-            if (ImGui.IsItemFocused()) glassDraw.AddRect(glassMin, glassMax, ImGui.GetColorU32(Palette.Accent), (glassMax.Y - glassMin.Y) * .5f);
+            if (ShowKeyboardFocus) glassDraw.AddRect(glassMin, glassMax, ImGui.GetColorU32(Palette.Accent), (glassMax.Y - glassMin.Y) * .5f);
             return clicked;
         }
         if (!Palette.Light)
@@ -404,8 +475,13 @@ internal static class DactTheme
         var min = ImGui.GetItemRectMin(); var max = ImGui.GetItemRectMax();
         var draw = ImGui.GetWindowDrawList();
         var textured = GameAssets?.Button(min, max, ImGui.IsItemActive(), ImGui.IsItemHovered()) == true;
-        if (!textured) draw.AddRectFilled(min, max, ImGui.GetColorU32(Palette.Raised), 5);
-        if (ImGui.IsItemFocused()) draw.AddRect(min - Vector2.One, max + Vector2.One, ImGui.GetColorU32(Palette.Accent), 6);
+        if (!textured)
+        {
+            var state = ImGui.IsItemActive() ? ImGuiCol.ButtonActive : ImGui.IsItemHovered() ? ImGuiCol.ButtonHovered : ImGuiCol.Button;
+            draw.AddRectFilled(min, max, ImGui.GetColorU32(Color(state, Vector4.One)), 5);
+            draw.AddRect(min, max, ImGui.GetColorU32(Palette.Border), 5);
+        }
+        if (ShowKeyboardFocus) draw.AddRect(min - Vector2.One, max + Vector2.One, ImGui.GetColorU32(Palette.Accent), 6);
         var display = label.Split("##", 2)[0];
         draw.PushClipRect(min, max, true);
         // ButtonA's opaque face is y=2..22 in its 28px source. Its lower
@@ -419,6 +495,10 @@ internal static class DactTheme
         draw.PopClipRect();
         return pressed;
     }
+
+    // Mouse clicks also assign ImGui focus. Only keyboard/gamepad navigation
+    // should draw a persistent focus cue around our custom-painted controls.
+    private static bool ShowKeyboardFocus => ImGui.IsItemFocused() && !ImGui.GetCurrentContext().NavDisableHighlight;
 
     internal static unsafe Vector2 CenteredTextPosition(string text, Vector2 min, Vector2 max)
     {

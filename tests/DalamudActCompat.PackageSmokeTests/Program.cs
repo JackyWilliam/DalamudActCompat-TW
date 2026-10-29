@@ -53,6 +53,11 @@ System.Runtime.Loader.AssemblyLoadContext.Default.Resolving += (_, name) =>
     name.Name == "Lumina" ? typeof(Lumina.GameData).Assembly : null;
 #endif
 
+if (args.Contains("--host-stubborn-child", StringComparer.Ordinal))
+{
+    await Task.Delay(Timeout.InfiniteTimeSpan);
+    return 0;
+}
 var testRoot = Path.Combine(Path.GetTempPath(), $"DalamudActCompat-{Guid.NewGuid():N}");
 Directory.CreateDirectory(testRoot);
 
@@ -64,6 +69,59 @@ try
         OverlayManagerSmokeTests.Acceptance();
         return 0;
     }
+    if (args.Length == 2 && args[0] == "--help-screenshots")
+    {
+        HelpScreenshotGenerator.Run(args[1]);
+        return 0;
+    }
+    if (args.Contains("--help-only", StringComparer.Ordinal))
+    {
+        HelpWindowSmokeTests.Run();
+        return 0;
+    }
+    if (args.Contains("--ban-native-only", StringComparer.Ordinal))
+    {
+        BanRecoveryNativeSmokeTests.Run();
+        return 0;
+    }
+    if (args.Contains("--ban-recovery-only", StringComparer.Ordinal))
+    {
+        await CloudBanRecoverySmokeTests.RunAsync(testRoot);
+        return 0;
+    }
+    if (args.Contains("--account-native-only", StringComparer.Ordinal))
+    {
+        AccountNativeUiSmokeTests.Run();
+        return 0;
+    }
+    if (args.Contains("--host-lifecycle-only", StringComparer.Ordinal))
+    {
+        await HostLifecycleSmokeTests.RunAsync(testRoot);
+        return 0;
+    }
+    await ManualPluginPackageSmokeTests.RunAsync(testRoot);
+    if (args.Contains("--manual-plugins-only", StringComparer.Ordinal)) return 0;
+    if (args.Contains("--account-recovery-only", StringComparer.Ordinal))
+    {
+        await CloudAccountRecoverySmokeTests.RunAsync(testRoot);
+        return 0;
+    }
+    if (args.Contains("--cactbot-render-only", StringComparer.Ordinal) ||
+        args.Contains("--cactbot-frame-only", StringComparer.Ordinal))
+    {
+        await CactbotRenderRecoverySmokeTests.RunLiveAsync(testRoot,
+            Path.Combine(FindProjectRoot(), "src", "DalamudActCompat.ActRuntime", "bin", "Release",
+#if DACT_TAIWAN
+                "net9.0-windows",
+#else
+                "net10.0-windows",
+#endif
+                "win-x64", "WebView2Loader.dll"),
+            args.Contains("--cactbot-frame-only", StringComparer.Ordinal));
+        CactbotRenderRecoverySmokeTests.Run();
+        return 0;
+    }
+    CactbotRenderRecoverySmokeTests.Run();
     if (args.Contains("--overlay-manager-only", StringComparer.Ordinal))
     {
         OverlayManagerSmokeTests.Run(Environment.GetEnvironmentVariable("DACT_TEST_CIMGUI") is { Length: > 0 });
@@ -112,6 +170,7 @@ try
     if (args.Contains("--meter-display-scope-only", StringComparer.Ordinal)) return 0;
     EnglishLocalizationSmokeTests.Run();
     UiLanguageSmokeTests.Run();
+    HelpWindowSmokeTests.Run();
     if (args.Contains("--localization-only", StringComparer.Ordinal)) return 0;
     if (args.Contains("--liquid-glass-only", StringComparer.Ordinal))
     {
@@ -123,6 +182,12 @@ try
     {
         await SkinSmokeTests.CloudAsync(testRoot);
         await CloudDefaultConfigurationSmokeTests.RunAsync(testRoot);
+        await UltimateSkinCloudSmokeTests.RunAsync(testRoot);
+        return 0;
+    }
+    if (args.Contains("--ultimate-skins-api-only", StringComparer.Ordinal))
+    {
+        await UltimateSkinCloudSmokeTests.ApiAsync(testRoot);
         return 0;
     }
     if (args.Contains("--skins-api-only", StringComparer.Ordinal))
@@ -136,6 +201,7 @@ try
         return 0;
     }
     SkinSmokeTests.Run();
+    await UltimateSkinCloudSmokeTests.RunAsync(testRoot);
     if (args.Contains("--display-options-only", StringComparer.Ordinal))
     {
         await DisplayOptionsSmokeTests.RunAsync();
@@ -154,6 +220,7 @@ try
     if (args.Contains("--unnamed-entities-only", StringComparer.Ordinal))
     {
         UnnamedEntitySmokeTests.Run();
+        MissingStatusManagerSmokeTests.Run();
         return 0;
     }
     if (args.Contains("--friends-unread-only", StringComparer.Ordinal))
@@ -188,6 +255,10 @@ try
         NotActStatisticsSmokeTests.Run();
         return 0;
     }
+    if (args.Contains("--trigger-ordering-only", StringComparer.Ordinal))
+    {
+        return (await TriggerEventOrderingSmokeTests.RunAsync(testRoot)).Count == 0 ? 0 : 1;
+    }
     ValidateSettingsSerializerMemberTypes();
     ValidateGameRegionSelection();
     TaiwanCompatibilitySmokeTests.Run();
@@ -201,7 +272,12 @@ try
     ValidateFoxTtsBridge();
     ValidateRuntimePluginStartupOrder();
     ValidateBoundedHostQueue();
+    var orderingFailures = await TriggerEventOrderingSmokeTests.RunAsync(testRoot);
+    Assert(
+        orderingFailures.Count == 0,
+        "Trigger event ordering regressions failed: " + string.Join("; ", orderingFailures));
     ValidateHostMemoryProtectionPolicy();
+    await HostLifecycleSmokeTests.RunAsync(testRoot);
     ValidateVersionedCompatibilityHostExtraction(testRoot);
     await ValidateResourcePackLifecycleAsync(testRoot);
     ValidateSilverDasherPermissionIsolation();
@@ -216,6 +292,7 @@ try
     ValidateReflectionActLoggerOverloads();
     ValidateFfxivEntityDeltaBuilder();
     UnnamedEntitySmokeTests.Run();
+    MissingStatusManagerSmokeTests.Run();
     ValidatePlayerIdentityResolution();
     ValidateCombatEventScoping();
     FallbackCombatEventSmokeTests.Run();
@@ -247,10 +324,15 @@ try
 #endif
 #if !DACT_TAIWAN
     Patch756SmokeTests.Run();
+    Patch757SmokeTests.Run();
+    Patch757HotfixSmokeTests.Run();
 #endif
     ValidatePluginRepositoryMetadata();
-    // Taiwan's own table and packet fixtures run above; the mainland 7.56 table
-    // is intentionally not a dependency of this standalone checkout.
+    // Taiwan's own table and packet fixtures run above; the mainland 7.56/7.57
+    // tables are intentionally not a dependency of this standalone checkout.
+#if !DACT_TAIWAN
+    Validate757Opcodes();
+#endif
     ValidateMeterRows();
     ValidateMeterLayout();
     ValidateIndependentMeterWindows();
@@ -259,6 +341,7 @@ try
     DrawingLifetimeSmokeTests.Run();
     PictoCleanupScopeSmokeTests.Run();
     PictoOnlineResourceSmokeTests.Run();
+    PictoTn221SyntaxSmokeTests.Run();
     ValidateEmptyEncounterFiltering();
     ValidateDutyEncounterAggregation();
     ValidateDutyWipeTracking();
@@ -295,6 +378,7 @@ try
     await ValidateRealConfigurationBackupFixtureAsync(testRoot);
     ValidateCloudKeyEnvelopeAndCredentialProtection(testRoot);
     await CloudOperationGuardSmokeTests.RunAsync(FindProjectRoot());
+    await CloudAccountRecoverySmokeTests.RunAsync(testRoot);
     ValidateCloudActivationKeyHelp();
     await ValidateCloudApiContractAsync(testRoot);
     await AdministratorSmokeTests.RunAsync(testRoot);
@@ -305,6 +389,7 @@ try
     await ValidateCloudRegistrationSurvivesVersionRefreshFailureAsync(testRoot);
     await ValidateCommittedRegistrationSurvivesCredentialWriteFailureAsync(testRoot);
     await ValidateCloudBanResponseEnforcesMarkerAsync(testRoot);
+    await CloudBanRecoverySmokeTests.RunAsync(testRoot);
     var cloudIntegrationBaseUrl = Environment.GetEnvironmentVariable(
         "DACT_CLOUD_INTEGRATION_BASE_URL");
     var cloudIntegrationAdminToken = Environment.GetEnvironmentVariable(
@@ -568,7 +653,13 @@ finally
 {
     if (Directory.Exists(testRoot))
     {
-        Directory.Delete(testRoot, true);
+        // Exited Windows child processes can briefly retain their executable image.
+        for (var attempt = 0; ; attempt++)
+        {
+            try { Directory.Delete(testRoot, true); break; }
+            catch (Exception ex) when (attempt < 9 && ex is IOException or UnauthorizedAccessException)
+            { await Task.Delay(100); }
+        }
     }
 }
 
@@ -1632,6 +1723,25 @@ static void ValidatePictoActOverlayCommands()
         $"PictoACT concave Polygon native decomposition changed its filled area " +
         $"(parts={concaveNativeShapes.Count}, area={nativeTriangleArea:R}).");
 
+    // Triggernometry 2.3.0.0 fixed triangulation of repeated, near-repeated and collinear
+    // points. Before the matching DACT change a repeated vertex filled only part of the shape.
+    foreach (var (points, expectedArea) in new[]
+             {
+                 ("0, 0; 4, 0; 4, 0; 4, 4; 0, 4", 16f),
+                 ("0, 0; 4, 0; 4.01, 0.005; 4, 4; 0, 4", 16.02f),
+                 ("0, 0; 2, 0; 4, 0; 4, 4; 0, 4", 16f),
+                 ("0, 0; 4, 0; 4, 4; 0, 4; 0, 0; 0, 0", 16f),
+                 ("0, 0; 4, 0; 4, 1; 1, 1; 1, 1; 1, 4; 0, 4", 7f),
+             })
+    {
+        var degenerateShapes = PictoActOverlayService.BuildNativeShapes(PictoActOverlayService.Parse(
+            $"Action: Triangulate\nt: 8\nPoints: {points}").Single().Shape!);
+        var degenerateArea = degenerateShapes.Sum(shape => shape.PrimaryScale * shape.SecondaryScale / 2);
+        Assert(
+            MathF.Abs(degenerateArea - expectedArea) < 0.05f,
+            $"PictoACT Triangulate '{points}' filled {degenerateArea:R} instead of {expectedArea}.");
+    }
+
     var persistentPolygon = PictoActOverlayService.Parse(
         "Action: Triangulate\nt: 0\nPoints: 0,0; 4,0; 0,4").Single().Shape!;
     Assert(
@@ -1959,15 +2069,23 @@ static void ValidateBoundedHostQueue()
             "Combat state coalescing rejected a noisy transition.");
     }
 
-    var latestCombatState = queue.DequeueAsync(CancellationToken.None)
-        .AsTask()
-        .GetAwaiter()
-        .GetResult();
+    var combatStates = new List<string>();
+    while (queue.DataCount > 0)
+    {
+        combatStates.Add(queue.DequeueAsync(CancellationToken.None)
+            .AsTask()
+            .GetAwaiter()
+            .GetResult()
+            .Type);
+    }
+
+    // Noise collapses to whole cycles, but TN must still observe one end and one start.
     Assert(
         queue.ControlCount == 0 &&
-        queue.DataCount == 0 &&
-        latestCombatState.Type == HostMessageTypes.CombatEnded,
-        "Alternating combat transitions were not coalesced to their single latest state.");
+        combatStates.Count is > 0 and <= 3 &&
+        combatStates.Contains(HostMessageTypes.CombatStarted) &&
+        combatStates[^1] == HostMessageTypes.CombatEnded,
+        $"Alternating combat transitions were not bounded to their latest state with both edges: {string.Join(",", combatStates)}.");
 }
 
 static void ValidateHostMemoryProtectionPolicy()
@@ -3436,7 +3554,7 @@ static void ValidateIndependentMeterWindows()
         "src",
         "DalamudActCompat",
         "UI",
-        "ControlCenterWindow.cs"));
+        "ControlCenterWindow.cs")) + File.ReadAllText(Path.Combine(FindProjectRoot(), "src", "DalamudActCompat", "UI", "ControlCenterWindow.Authentication.cs"));
     var settingsSource = File.ReadAllText(Path.Combine(
         projectRoot,
         "src",
@@ -4750,7 +4868,7 @@ static void ValidateControlCenterPresentation()
 
     var projectRoot = FindProjectRoot();
     var controlCenterSource = File.ReadAllText(Path.Combine(
-        projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs"));
+        projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs")) + File.ReadAllText(Path.Combine(FindProjectRoot(), "src", "DalamudActCompat", "UI", "ControlCenterWindow.Authentication.cs"));
     var meterWindowSource = File.ReadAllText(Path.Combine(
         projectRoot, "src", "DalamudActCompat", "Meter", "MeterWindow.cs"));
     var historySource = File.ReadAllText(Path.Combine(
@@ -4801,7 +4919,7 @@ static void ValidateControlCenterPresentation()
         controlCenterSource.Contains("account-authentication-gate", StringComparison.Ordinal) &&
         controlCenterSource.Contains("account-authentication-hero", StringComparison.Ordinal) &&
         controlCenterSource.Contains("account-authentication-card", StringComparison.Ordinal) &&
-        controlCenterSource.Contains("stackAuthenticationLayout", StringComparison.Ordinal) &&
+        controlCenterSource.Contains("DrawDiscordBindingGate(cloudSnapshot)", StringComparison.Ordinal) &&
         controlCenterSource.Contains("account-authentication-navigation", StringComparison.Ordinal) &&
         controlCenterSource.Contains("DrawAuthenticationGate(cloudSnapshot);", StringComparison.Ordinal) &&
         controlCenterSource.Contains("private void DrawAccountSettings()", StringComparison.Ordinal) &&
@@ -4809,7 +4927,7 @@ static void ValidateControlCenterPresentation()
         Regex.Matches(controlCenterSource, "ref cloudRememberLogin\\);").Count == 1 &&
         !controlCenterSource.Contains("重置后自动登录", StringComparison.Ordinal) &&
         controlCenterSource.Contains("恢复密钥自助改密", StringComparison.Ordinal) &&
-        controlCenterSource.Contains("管理员一次性重置码（必填）", StringComparison.Ordinal) &&
+        controlCenterSource.Contains("一次性重置码（必填）", StringComparison.Ordinal) &&
         controlCenterSource.Contains("恢复密钥（必填）", StringComparison.Ordinal) &&
         controlCenterSource.Contains("将自动用于改密和解锁原有云备份", StringComparison.Ordinal) &&
         controlCenterSource.Contains("复制诊断日志", StringComparison.Ordinal) &&
@@ -4922,15 +5040,20 @@ static void ValidateControlCenterPresentation()
             "private int observedCloudAuthenticationState;",
             StringComparison.Ordinal) &&
         constructorSourceForAuthentication.Contains(
-            "RestrictWindowsToAuthenticationGate(openGate: false);",
+            "RestrictWindowsToAuthenticationGate();",
             StringComparison.Ordinal) &&
-        !constructorSourceForAuthentication.Contains(
-            "RestrictWindowsToAuthenticationGate(openGate: true);",
-            StringComparison.Ordinal) &&
-        pluginSource.Contains("if (!cloudClient.Snapshot.IsSignedIn)", StringComparison.Ordinal) &&
+        !pluginSource.Contains("RestrictWindowsToAuthenticationGate(openGate:", StringComparison.Ordinal) &&
+        pluginSource.Contains("if (!cloudClient.Snapshot.CanUseDact)", StringComparison.Ordinal) &&
         pluginSource.Contains("if (!IsDactAccessAllowed())", StringComparison.Ordinal) &&
         !hostResourceMethod.Contains("StartIndependentHostAsync", StringComparison.Ordinal),
         "Authentication no longer starts silently, gates DACT runtime startup, or keeps core resource download from starting a Host before login.");
+    var restrictedWindowsSource = pluginSource[pluginSource.IndexOf(
+        "private void RestrictWindowsToAuthenticationGate()", StringComparison.Ordinal)..pluginSource.IndexOf(
+        "private void RestoreWindowsAfterAuthenticationGate()", StringComparison.Ordinal)];
+    Assert(!restrictedWindowsSource.Contains("LocateAnimated", StringComparison.Ordinal) &&
+           !restrictedWindowsSource.Contains("IsOpen = true", StringComparison.Ordinal) &&
+           pluginSource.Contains("ApplySimplifiedWindowVisibility(openHome: false)", StringComparison.Ordinal),
+        "A background account transition can still open a main window without user intent.");
     Assert(
         historySource.Contains("BrandedWindowChrome.Draw", StringComparison.Ordinal) &&
         historySource.Contains("combat-history-navigation", StringComparison.Ordinal) &&
@@ -5241,46 +5364,82 @@ static void ValidateInstalledPluginVersionDisplay(string testRoot)
         "The Extensions page did not prefer the actual DLL version while retaining manifest metadata.");
 }
 
-static void Validate756Opcodes()
+static void Validate757Opcodes()
 {
-    // Assert the published 7.56h values independently of runtime resource selection.
+    // Assert the published 7.57 values independently of runtime resource selection.
     var expected = new Dictionary<string, ushort>
     {
-        ["StatusEffectList"] = 0x0083,
-        ["StatusEffectList2"] = 0x0151,
-        ["StatusEffectList3"] = 0x03DC,
-        ["BossStatusEffectList"] = 0x0066,
-        ["StatusEffectListForay3"] = 0x0163,
-        ["Ability1"] = 0x0313,
-        ["Ability8"] = 0x021C,
-        ["Ability16"] = 0x008C,
-        ["Ability24"] = 0x030A,
-        ["Ability32"] = 0x03AA,
-        ["ActorCast"] = 0x0162,
-        ["EffectResult"] = 0x0131,
-        ["EffectResultBasic"] = 0x02B9,
-        ["ActorControl"] = 0x025F,
-        ["ActorControlSelf"] = 0x0204,
-        ["ActorControlTarget"] = 0x0358,
-        ["UpdateHpMpTp"] = 0x011B,
-        ["PlayerSpawn"] = 0x01C4,
-        ["NpcSpawn"] = 0x020C,
-        ["NpcSpawn2"] = 0x01BD,
-        ["ActorMove"] = 0x01D9,
-        ["ActorSetPos"] = 0x02AE,
-        ["ActorGauge"] = 0x0266,
-        ["PresetWaymark"] = 0x0167,
-        ["Waymark"] = 0x029D,
-        ["SystemLogMessage"] = 0x00A8,
+        ["StatusEffectList"] = 0x02CE,
+        ["StatusEffectList2"] = 0x021B,
+        ["StatusEffectList3"] = 0x0097,
+        ["BossStatusEffectList"] = 0x039B,
+        ["StatusEffectListForay3"] = 0x022B,
+        ["Ability1"] = 0x00BD,
+        ["Ability8"] = 0x013F,
+        ["Ability16"] = 0x0390,
+        ["Ability24"] = 0x009E,
+        ["Ability32"] = 0x0276,
+        ["ActorCast"] = 0x0301,
+        ["EffectResult"] = 0x00F2,
+        ["EffectResultBasic"] = 0x0225,
+        ["ActorControl"] = 0x0198,
+        ["ActorControlSelf"] = 0x01E6,
+        ["ActorControlTarget"] = 0x00C8,
+        ["UpdateHpMpTp"] = 0x03B7,
+        ["PlayerSpawn"] = 0x0265,
+        ["NpcSpawn"] = 0x0114,
+        ["NpcSpawn2"] = 0x02F2,
+        ["ActorMove"] = 0x0217,
+        ["ActorSetPos"] = 0x03E0,
+        ["ActorGauge"] = 0x02EC,
+        ["PresetWaymark"] = 0x01F8,
+        ["Waymark"] = 0x0281,
+        ["SystemLogMessage"] = 0x00EB,
     };
-    foreach (var region in new[] { GameRegion.Chinese, GameRegion.Global, GameRegion.Korean })
+    // Global's 7.57h hotfix reshuffled every Machina opcode (marzent/machina 06d9ab4,
+    // cross-checked against FFXIVOpcodes d85eaeb); CN and KR remain on 7.57.
+    var expectedGlobalHotfix = new Dictionary<string, ushort>
+    {
+        ["StatusEffectList"] = 0x00D4,
+        ["StatusEffectList2"] = 0x0387,
+        ["StatusEffectList3"] = 0x028E,
+        ["BossStatusEffectList"] = 0x014C,
+        ["StatusEffectListForay3"] = 0x02D0,
+        ["Ability1"] = 0x0363,
+        ["Ability8"] = 0x0262,
+        ["Ability16"] = 0x0299,
+        ["Ability24"] = 0x0245,
+        ["Ability32"] = 0x0385,
+        ["ActorCast"] = 0x007F,
+        ["EffectResult"] = 0x032C,
+        ["EffectResultBasic"] = 0x00EB,
+        ["ActorControl"] = 0x0229,
+        ["ActorControlSelf"] = 0x0101,
+        ["ActorControlTarget"] = 0x022B,
+        ["UpdateHpMpTp"] = 0x02A4,
+        ["PlayerSpawn"] = 0x017C,
+        ["NpcSpawn"] = 0x017D,
+        ["NpcSpawn2"] = 0x01AB,
+        ["ActorMove"] = 0x0136,
+        ["ActorSetPos"] = 0x0066,
+        ["ActorGauge"] = 0x0326,
+        ["PresetWaymark"] = 0x035E,
+        ["Waymark"] = 0x03DA,
+        ["SystemLogMessage"] = 0x0250,
+    };
+    foreach (var (region, table) in new[]
+             {
+                 (GameRegion.Chinese, expected),
+                 (GameRegion.Global, expectedGlobalHotfix),
+                 (GameRegion.Korean, expected),
+             })
     {
         OpcodeManager.Instance.SetRegion(region);
-        foreach (var pair in expected)
+        foreach (var pair in table)
         {
             Assert(
                 OpcodeManager.Instance.CurrentOpcodes.TryGetValue(pair.Key, out var actual) && actual == pair.Value,
-                $"{region} 7.56h opcode {pair.Key} was {actual:X}, expected {pair.Value:X}.");
+                $"{region} opcode {pair.Key} was {actual:X}, expected {pair.Value:X}.");
         }
     }
     OpcodeManager.Instance.SetRegion(GameRegion.Chinese);
@@ -6329,7 +6488,7 @@ static void ValidateFflogsConcurrencyBoundaries()
     var serviceSource = File.ReadAllText(Path.Combine(
         projectRoot, "src", "DalamudActCompat", "Fflogs", "FflogsEstimateService.cs"));
     var controlCenterSource = File.ReadAllText(Path.Combine(
-        projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs"));
+        projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs")) + File.ReadAllText(Path.Combine(FindProjectRoot(), "src", "DalamudActCompat", "UI", "ControlCenterWindow.Authentication.cs"));
     var adapterSource = File.ReadAllText(Path.Combine(
         projectRoot, "src", "DalamudActCompat", "Parser", "IinactAdapter.cs"));
     Assert(
@@ -10259,7 +10418,7 @@ static void ValidateHtmlOverlayDefaults()
         "src",
         "DalamudActCompat",
         "UI",
-        "ControlCenterWindow.cs"));
+        "ControlCenterWindow.cs")) + File.ReadAllText(Path.Combine(FindProjectRoot(), "src", "DalamudActCompat", "UI", "ControlCenterWindow.Authentication.cs"));
     var meterWindowSource = File.ReadAllText(Path.Combine(
         FindProjectRoot(),
         "src",
@@ -10390,7 +10549,7 @@ static void ValidateHtmlOverlayDefaults()
         "Unified overlay management lost an existing Cactbot or custom overlay entry point.");
     Assert(
         controlCenterSource.Contains(
-            "var helpAction = cloudSnapshot.IsSignedIn ? openHelp : null;",
+            "var helpAction = cloudSnapshot.CanUseDact ? openHelp : null;",
             StringComparison.Ordinal) &&
         controlCenterSource.Contains("helpAction: helpAction", StringComparison.Ordinal) &&
         controlCenterSource.Contains("helpTooltip: text.Get(\"帮助\", \"Help\")", StringComparison.Ordinal) &&
@@ -10411,47 +10570,35 @@ static void ValidateHtmlOverlayDefaults()
         brandedChromeSource.Contains("##status-{id}", StringComparison.Ordinal) &&
         typeof(HelpWindow).IsSubclassOf(typeof(Dalamud.Interface.Windowing.Window)) &&
         helpWindowSource.Contains("help-document-navigation", StringComparison.Ordinal) &&
+        // The usage notice is the user's own text and must stay on the first page.
         helpWindowSource.Contains("使用须知", StringComparison.Ordinal) &&
         helpWindowSource.Contains("不要去绿玩面前跳脸。", StringComparison.Ordinal) &&
         helpWindowSource.Contains("一经发现立刻踢出！", StringComparison.Ordinal) &&
+        Regex.IsMatch(helpWindowSource, @"enum HelpPage\s*\{\s*UsageNotice,") &&
         helpWindowSource.Contains("宏指令", StringComparison.Ordinal) &&
         helpWindowSource.Contains("ImGui.SetClipboardText(command);", StringComparison.Ordinal) &&
         helpWindowSource.Contains("InputTextWithHint", StringComparison.Ordinal) &&
         helpWindowSource.Contains("help-search-card", StringComparison.Ordinal) &&
         helpWindowSource.Contains("ImGui.Dummy(new Vector2(0, 8))", StringComparison.Ordinal) &&
-        Regex.IsMatch(
-            helpWindowSource,
-            "\"help-search-card\",\\s*new Vector2\\(-1, 58\\),\\s*false") &&
         !helpWindowSource.Contains(
             "ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(Gold.X, Gold.Y, Gold.Z, 0.72f))",
             StringComparison.Ordinal) &&
-        helpWindowSource.Contains("DactTheme.Button(\"Search\"", StringComparison.Ordinal) &&
+        // The search button follows the UI language instead of always reading "Search".
+        helpWindowSource.Contains("text.Get(\"搜索\", \"Search\")", StringComparison.Ordinal) &&
         helpWindowSource.Contains("searchDraft", StringComparison.Ordinal) &&
         !helpWindowSource.Contains("text.Get(\"清除\", \"Clear\")", StringComparison.Ordinal) &&
         helpWindowSource.Contains("CreateSearchEntries", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("常见问题", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("控制中心五个页面怎么用", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("如何给扩展开权限", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("插件打不开、命令没反应或一直初始化", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("没有战斗统计、没有队员或窗口不见了", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("副本外结束后保留上一场结果", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("手动重置会立即清空", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("历史记录以“一次副本进入”为一个可展开文件夹", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("HPS 用本把从开怪到结束的完整经过时间计算", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("24 人本把所有玩家放在同一紧凑列表", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("总伤害、最高伤害和死亡", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("最高伤害使用紧凑宽度显示", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("三个模板互斥启用", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("页面预览直接复用真实悬浮窗渲染", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("后续刷新不会把旧数据带回", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("横版也支持背景颜色", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("只有存在未保存修改时", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("没有修改会直接关闭", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("职业 / ID 会先缩到两字", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("可分别开关 FFLogs、DPS、EncDPS、ExtDPS、rDPS、HPS", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("反馈问题时请提供什么", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("重启共享 Host", StringComparison.Ordinal) &&
-        helpWindowSource.Contains("实际 FileVersion", StringComparison.Ordinal) &&
+        // Cards size to their content; fixed heights clipped text at larger font scales.
+        helpWindowSource.Contains("cardHeights[id] =", StringComparison.Ordinal) &&
+        !Regex.IsMatch(helpWindowSource, @"DrawCard\(""[^""]+"", [^,]+, \d+,") &&
+        new[]
+        {
+            "登录 DACT 账号", "绑定 Discord", "确认解析器在运行", "打一下木人",
+            "数值是怎么算的", "统计重置与历史", "FFLogs DPS Parse 预估",
+            "添加网页悬浮窗", "移动、缩放与鼠标穿透", "启用和打开配置", "ACT 插件权限边界",
+            "云同步", "找回账号", "好友", "先看运行状态", "重启对应的组件", "反馈问题",
+            "重启共享 Host", "重启抹茶 Host", "重启通用 Host",
+        }.All(section => helpWindowSource.Contains(section, StringComparison.Ordinal)) &&
         new[]
         {
             "/actcompat on",
@@ -13132,7 +13279,8 @@ static void ValidateNetworkLogSessionRotation(string testRoot)
 static void ValidateCloudActivationKeyHelp()
 {
     var projectRoot = FindProjectRoot();
-    var ui = File.ReadAllText(Path.Combine(projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs"));
+    var ui = File.ReadAllText(Path.Combine(projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.cs")) +
+        File.ReadAllText(Path.Combine(projectRoot, "src", "DalamudActCompat", "UI", "ControlCenterWindow.Authentication.cs"));
     var registration = ui[ui.IndexOf("private void DrawCloudRegistrationForm(", StringComparison.Ordinal)..
         ui.IndexOf("private void DrawCloudActivationKeyHelp(", StringComparison.Ordinal)];
     var help = ui[ui.IndexOf("private void DrawCloudActivationKeyHelp(", StringComparison.Ordinal)..

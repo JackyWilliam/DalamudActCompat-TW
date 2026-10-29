@@ -4,7 +4,7 @@
     {
       "id": "triggernometry",
       "name": "Triggernometry CN Maintained Edition",
-      "version": "2.2.0.1",
+      "version": "2.3.0.0",
       "author": "Paissa Heavy Industries",
       "maintainer": "MnFeN (Chinese maintained edition)",
       "copyright": "(c) 2016-2025 Paissa Heavy Industries",
@@ -14,7 +14,7 @@
       "license": "MIT",
       "licenseFile": "triggernometry/LICENSE.txt",
       "relativeAssembly": "triggernometry/Triggernometry.dll",
-      "sha256": "ea764f6e2ba1a8955574efd9cbf744948e82f0986d15faa3768d07d97a85e5e8",
+      "sha256": "f40d4a838442d2618fe07b29292bde7988a1d69aa36e797f5b9be49b4ec89f55",
       "enableAfterInstall": true
     },
     {

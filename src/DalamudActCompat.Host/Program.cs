@@ -115,10 +115,7 @@ internal static class Program
         var pluginRuntimeDisposed = 0;
         var pluginStartupStarted = 0;
         var criticalStateSync = new object();
-        var pendingRuntimeEvents = new LinkedList<(
-            Action<LegacyPluginRuntime> Replay,
-            int LogCount)>();
-        var pendingRuntimeLogCount = 0;
+        var startupEvents = new StartupEventBuffer<LegacyPluginRuntime>(HostProtocol.DataQueueCapacity);
         var heartbeat = Task.Factory.StartNew(
             () => HeartbeatLoop(
                 options,
@@ -184,6 +181,7 @@ internal static class Program
                             // Keep the established process registration entry point intact for
                             // extensions that discover it by reflection; region is additive.
                             HostPluginBridge.ConfigureGameProcess(hello.ProcessId);
+                            HostPluginBridge.ConfigureCombatLogDirectory(hello.CombatLogDirectory);
                             if (hello.GameContext is not null)
                             {
                                 HostPluginBridge.ConfigureGameContext(hello.GameContext);
@@ -236,23 +234,21 @@ internal static class Program
                                         lock (criticalStateSync)
                                         {
                                             Interlocked.Exchange(ref pluginRuntimeReady, 1);
-                                            foreach (var pending in pendingRuntimeEvents)
+                                            var discarded = startupEvents.Replay(
+                                                runtime,
+                                                static (target, logs) => target.AcceptLogs(logs),
+                                                DateTimeOffset.UtcNow,
+                                                ex => HostPluginBridge.ReportException(
+                                                    "act-host",
+                                                    "Startup event replay",
+                                                    ex));
+                                            if (discarded != 0)
                                             {
-                                                try
-                                                {
-                                                    pending.Replay(runtime);
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    HostPluginBridge.ReportException(
-                                                        "act-host",
-                                                        "Startup event replay",
-                                                        ex);
-                                                }
+                                                Console.WriteLine(
+                                                    $"Discarded {discarded} startup log line(s) older than " +
+                                                    $"{StartupEventBuffer<LegacyPluginRuntime>.MaximumReplayAge.TotalSeconds:0} s " +
+                                                    "instead of replaying them as live events.");
                                             }
-
-                                            pendingRuntimeEvents.Clear();
-                                            pendingRuntimeLogCount = 0;
                                         }
                                     },
                                     shutdown.Token),
@@ -328,37 +324,16 @@ internal static class Program
                             }
                             else
                             {
-                                while (pendingRuntimeLogCount + logs.Count >
-                                       HostProtocol.DataQueueCapacity)
-                                {
-                                    var oldestLogs = pendingRuntimeEvents.First;
-                                    while (oldestLogs is not null && oldestLogs.Value.LogCount == 0)
-                                    {
-                                        oldestLogs = oldestLogs.Next;
-                                    }
-
-                                    if (oldestLogs is null)
-                                    {
-                                        break;
-                                    }
-
-                                    pendingRuntimeLogCount -= oldestLogs.Value.LogCount;
-                                    pendingRuntimeEvents.Remove(oldestLogs);
-                                }
-
-                                if (logs.Count <= HostProtocol.DataQueueCapacity)
-                                {
-                                    pendingRuntimeEvents.AddLast((
-                                        runtime => runtime.AcceptLogs(logs),
-                                        logs.Count));
-                                    pendingRuntimeLogCount += logs.Count;
-                                }
+                                startupEvents.AddLogs(logs);
                             }
                         }
                         break;
                     case HostMessageTypes.SilverDasherLogBatch:
                         HostPluginBridge.PublishSilverDasherLogs(
                             envelope.Payload.Deserialize<IReadOnlyList<HostLogEvent>>() ?? []);
+                        break;
+                    case HostMessageTypes.CombatLogDirectory:
+                        HostPluginBridge.ConfigureCombatLogDirectory(envelope.Payload.Deserialize<string>());
                         break;
                     case HostMessageTypes.ZoneChanged:
                         if (envelope.Payload.Deserialize<HostZoneEvent>() is { } zone)
@@ -371,11 +346,9 @@ internal static class Program
                                 }
                                 else
                                 {
-                                    pendingRuntimeEvents.AddLast((
-                                        runtime => runtime.ChangeZone(
-                                            zone.TerritoryId,
-                                            zone.ZoneName),
-                                        0));
+                                    startupEvents.AddEvent(runtime => runtime.ChangeZone(
+                                        zone.TerritoryId,
+                                        zone.ZoneName));
                                 }
                             }
                         }
@@ -412,9 +385,7 @@ internal static class Program
                             }
                             else
                             {
-                                pendingRuntimeEvents.AddLast((
-                                    runtime => runtime.SetCombatState(true),
-                                    0));
+                                startupEvents.AddEvent(runtime => runtime.SetCombatState(true));
                             }
                         }
                         break;
@@ -427,9 +398,7 @@ internal static class Program
                             }
                             else
                             {
-                                pendingRuntimeEvents.AddLast((
-                                    runtime => runtime.SetCombatState(false),
-                                    0));
+                                startupEvents.AddEvent(runtime => runtime.SetCombatState(false));
                             }
                         }
                         break;
