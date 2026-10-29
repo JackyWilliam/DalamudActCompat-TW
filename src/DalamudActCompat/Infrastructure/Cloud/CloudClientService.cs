@@ -20,8 +20,20 @@ internal sealed record CloudClientSnapshot(
     CloudBanNotice? ActiveBan = null,
     bool HasSavedRecoveryKey = false,
     CloudAdministratorStatus? Administrator = null,
-    CloudSponsorStatus? Sponsor = null)
+    CloudSponsorStatus? Sponsor = null,
+    CloudRecoveryStatus? Recovery = null,
+    CloudDiscordLinkCode? DiscordLinkCode = null,
+    string? RecoveryStatusError = null,
+    string? SkinAccountId = null,
+    bool UltimateSkinsUnlocked = false,
+    bool UltimateSkinsConfirmed = false,
+    bool UltimateSkinSyncPending = false,
+    string? SkinSyncError = null)
 {
+    // A remembered login proves identity, not Discord ownership. Only a status
+    // returned for this session may release the runtime and its functional UI.
+    public bool CanUseDact => IsSignedIn && ActiveBan is null && Recovery?.DiscordBound == true;
+
     public static CloudClientSnapshot SignedOut(string message = "请登录或注册账号。")
         => new(
             false,
@@ -83,6 +95,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
         SharedAccountStore? sharedAccountStore = null)
     {
         this.paths = paths;
+        skinUnlockStore = new CloudSkinUnlockStore(Path.Combine(paths.ConfigDirectory, "account-skin-unlocks"));
         this.apiClient = apiClient;
         this.credentialStore = credentialStore;
         this.banStore = banStore;
@@ -175,7 +188,10 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                 ClearCredentials("登录已过期，请重新登录。", isError: false);
                 return;
             }
-            await apiClient.ValidateSessionAsync(current.Token, token).ConfigureAwait(false);
+            var recoveryVersion = NextRecoveryStatusRequest();
+            var accountStatus = await apiClient.GetAccountStatusAsync(current.Token, token).ConfigureAwait(false);
+            ApplyRecoveryStatus(current, accountStatus.Recovery, recoveryVersion);
+            ApplySkinUnlockStatus(current, accountStatus);
             var recoveryWarning = await TryEnableRecoveryResetAsync(current, token)
                 .ConfigureAwait(false);
             StartSessionMonitor(current);
@@ -335,16 +351,20 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
         CancellationToken cancellationToken)
         => RunExclusiveAsync("正在重置密码…", async token =>
         {
-            var effectiveRecoveryKey = ResolveRecoveryKey(username, recoveryKey);
-            var envelope = envelopeService.Create(effectiveRecoveryKey, newPassword);
+            // A bot/support code authorizes recovery of the protected original key.
+            // Only the legacy key flow requires a locally available key up front.
+            var effectiveRecoveryKey = method == CloudPasswordResetMethod.RecoveryKey ||
+                                       !string.IsNullOrWhiteSpace(recoveryKey) || HasRecoveryKeyFor(username)
+                ? ResolveRecoveryKey(username, recoveryKey) : null;
+            var envelope = effectiveRecoveryKey is null ? null : envelopeService.Create(effectiveRecoveryKey, newPassword);
             var deviceId = machineIdentity.GetDeviceId();
             var response = method == CloudPasswordResetMethod.RecoveryKey
                 ? await apiClient.ResetPasswordWithRecoveryAsync(
                         username.Trim(),
-                        envelopeService.CreateRecoveryVerifier(effectiveRecoveryKey),
+                        envelopeService.CreateRecoveryVerifier(effectiveRecoveryKey!),
                         newPassword,
                         deviceId,
-                        envelope,
+                        envelope!,
                         token)
                     .ConfigureAwait(false)
                 : await apiClient.ResetPasswordAsync(
@@ -355,6 +375,9 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                         envelope,
                         token)
                     .ConfigureAwait(false);
+            if (effectiveRecoveryKey is null)
+                effectiveRecoveryKey = envelopeService.Open(response.KeyEnvelope ??
+                    throw new InvalidOperationException("服务器未返回原有云备份的恢复凭据，无法完成登录。"), newPassword);
             ValidateReturnedEnvelope(response, newPassword, effectiveRecoveryKey);
             var authentication = SaveAuthentication(
                 response,
@@ -466,7 +489,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             var status = await apiClient.AcknowledgeAdministratorAsync(current.Token, grantId, token).ConfigureAwait(false);
             ApplyAdministratorStatus(current, status);
             if (IsCurrentSession(current))
-                SetSnapshot(Snapshot with { StatusMessage = "管理员通知已确认。", StatusIsError = false });
+                UpdateSnapshot(value => value with { StatusMessage = "管理员通知已确认。", StatusIsError = false });
         }, cancellationToken);
 
     public Task AcknowledgeSponsorAsync(string username, string grantId, CancellationToken cancellationToken)
@@ -479,7 +502,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             // so a late heartbeat cannot bring back an acknowledged celebration.
             ApplyAccountStatus(current, null, null, status);
             if (IsCurrentSession(current))
-                SetSnapshot(Snapshot with { StatusMessage = "赞助者通知已确认。", StatusIsError = false });
+                UpdateSnapshot(value => value with { StatusMessage = "赞助者通知已确认。", StatusIsError = false });
         }, cancellationToken);
 
     private void ApplyAdministratorStatus(CloudStoredCredentials current, CloudAdministratorStatus status, long? expectedVersion = null)
@@ -601,7 +624,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                         current.RecoveryKey,
                         token)
                     .ConfigureAwait(false);
-                SetSnapshot(Snapshot with
+                UpdateSnapshot(value => value with
                 {
                     IsBusy = true,
                     RestorePreview = preview,
@@ -633,7 +656,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                         current.RecoveryKey,
                         token)
                     .ConfigureAwait(false);
-                SetSnapshot(Snapshot with
+                UpdateSnapshot(value => value with
                 {
                     IsBusy = true,
                     RestorePreview = null,
@@ -666,7 +689,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                     current.RecoveryKey,
                     token)
                 .ConfigureAwait(false);
-            SetSnapshot(Snapshot with
+            UpdateSnapshot(value => value with
             {
                 IsBusy = true,
                 RestorePreview = null,
@@ -699,6 +722,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
         sessionMonitorCancellation?.Dispose();
         monitorShutdown.Dispose();
         operationGate.Dispose();
+        skinSyncGate.Dispose();
         apiClient.Dispose();
     }
 
@@ -780,7 +804,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             // An explicit new login starts against the actual current shared revision.
             operationSharedAuthentication = authenticate ? sharedAccountStore?.PrepareAuthentication() : null;
             operationSharedRevision = operationSharedAuthentication?.Revision ?? sharedAccountStore?.Read().Revision ?? sharedRevision;
-            SetSnapshot(Snapshot with
+            UpdateSnapshot(value => value with
             {
                 IsBusy = true,
                 StatusMessage = message,
@@ -793,7 +817,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
 
     private void FinishOperation()
     {
-        SetSnapshot(Snapshot with { IsBusy = false });
+        UpdateSnapshot(value => value with { IsBusy = false });
         operationGate.Release();
     }
 
@@ -806,7 +830,8 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             return;
         }
         if (exception is CloudApiException unauthorized &&
-            unauthorized.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            unauthorized.StatusCode == System.Net.HttpStatusCode.Unauthorized &&
+            unauthorized.Code is "unauthorized" or "session_expired")
         {
             InvalidateSessionPreservingRecoveryKey("登录已失效，请重新登录。", isError: true);
             return;
@@ -897,7 +922,9 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             credentials = saved;
             // A fresh authentication must fetch its own grant, even when the
             // username is unchanged (the administrator may have revoked it).
-            snapshot = snapshot with { Sponsor = null };
+            snapshot = snapshot with { Sponsor = null, Recovery = null, DiscordLinkCode = null, RecoveryStatusError = null,
+                SkinAccountId = null, UltimateSkinsUnlocked = false, UltimateSkinsConfirmed = false,
+                UltimateSkinSyncPending = false, SkinSyncError = null };
             friendsSessionGeneration++;
             storedAccount = persisted ? saved : null;
             persistCurrentAccount = persisted;
@@ -936,7 +963,7 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                 return candidate.RecoveryKey;
             }
         }
-        throw new InvalidOperationException("请输入注册时保存的恢复密钥。旧备份无法由服务器解密。");
+        throw new InvalidOperationException("此方式需要原恢复密钥；已绑定 Discord 的账号也可以使用机器人重置码找回。");
     }
 
     private CloudStoredCredentials RequireCredentials()
@@ -1092,6 +1119,8 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
         CancellationToken cancellationToken)
     {
         await Task.WhenAll(
+                RunRecoveryProtectionMonitorAsync(current, cancellationToken),
+                RunSkinUnlockMonitorAsync(current, cancellationToken),
                 RunEventMonitorAsync(current, cancellationToken),
                 RunHeartbeatMonitorAsync(current, cancellationToken),
                 RunFriendConnectionAsync(current, cancellationToken))
@@ -1161,12 +1190,15 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             // A slow heartbeat must not block logout or foreground operations.
             // Ignore its role response if a newer operation already updated it.
             var roleVersion = Interlocked.Read(ref administratorStateVersion);
+            var recoveryVersion = NextRecoveryStatusRequest();
             try
             {
                 var status = await apiClient.GetAccountStatusAsync(current.Token, cancellationToken).ConfigureAwait(false);
                 // Old servers grant no sponsor skins. Apply both authorities under
                 // the same token/version guard so a late response cannot cross accounts.
                 ApplyAccountStatus(current, status.Administrator ?? new(), roleVersion, status.Sponsor ?? new());
+                ApplyRecoveryStatus(current, status.Recovery, recoveryVersion);
+                ApplySkinUnlockStatus(current, status);
             }
             catch (CloudApiException ex) when (ex.ToBanNotice() is { } ban)
             {
@@ -1211,7 +1243,12 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
             {
                 try
                 {
-                    banStore.EnsurePresent(ban);
+                    // Verification can clear the marker while this loop holds an old
+                    // snapshot. Never recreate that snapshot after confirmed removal.
+                    lock (stateLock)
+                    {
+                        if (activeBan == ban) banStore.EnsurePresent(ban);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1228,16 +1265,25 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                                 account.Token,
                                 cancellationToken)
                             .ConfigureAwait(false);
-                        if (access.Banned)
+                        if (await operationGate.WaitAsync(0, cancellationToken).ConfigureAwait(false))
                         {
-                            ApplyBan(ToBanNotice(access));
-                        }
-                        else if (access.WasBanRevoked)
-                        {
-                            LiftBanAfterServerConfirmation();
-                            InvalidateSessionPreservingRecoveryKey(
-                                "封禁已解除。请重启游戏或重载 DACT，然后重新登录。",
-                                isError: false);
+                            try
+                            {
+                                // Serialize with password verification/shared import without
+                                // holding stateLock while acquiring the shared-file mutex.
+                                if (ActiveBan == ban)
+                                {
+                                    if (access.Banned) ApplyBan(ToBanNotice(access));
+                                    else if (access.WasBanRevoked || access.SessionActive)
+                                    {
+                                        LiftBanAfterServerConfirmation();
+                                        InvalidateSessionPreservingRecoveryKey(
+                                            "封禁已解除。请重启游戏或重载 DACT，然后重新登录。",
+                                            isError: false);
+                                    }
+                                }
+                            }
+                            finally { operationGate.Release(); }
                         }
                     }
                     catch (CloudApiException ex) when (
@@ -1405,18 +1451,28 @@ internal sealed partial class CloudClientService : IDisposable, ICloudFriendsSes
                 storedAccount is not null,
                 invitations?.Administrator ?? (snapshot.Username == current.Username ? snapshot.Administrator : null),
                 invitations is not null ? invitations.Sponsor ?? new() :
-                    snapshot.Username == current.Username ? snapshot.Sponsor : null);
+                    snapshot.Username == current.Username ? snapshot.Sponsor : null,
+                // SaveAuthentication clears the old session's recovery state. A
+                // fast monitor may already have populated the new session before
+                // remembered login finishes loading backups and publishes its name.
+                snapshot.Recovery,
+                snapshot.DiscordLinkCode,
+                snapshot.RecoveryStatusError,
+                snapshot.SkinAccountId, snapshot.UltimateSkinsUnlocked, snapshot.UltimateSkinsConfirmed,
+                snapshot.UltimateSkinSyncPending, snapshot.SkinSyncError);
         }
     }
 
     private void SetFailure(string message, bool isError)
-        => SetSnapshot(Snapshot with { StatusMessage = message, StatusIsError = isError });
+        => UpdateSnapshot(value => value with { StatusMessage = message, StatusIsError = isError });
 
-    private void SetSnapshot(CloudClientSnapshot value)
+    private void UpdateSnapshot(Func<CloudClientSnapshot, CloudClientSnapshot> update)
     {
         lock (stateLock)
         {
-            snapshot = value;
+            // Merge UI status into the latest session: a late busy/error update
+            // must not overwrite concurrent binding confirmation or revocation.
+            snapshot = update(snapshot);
         }
     }
 

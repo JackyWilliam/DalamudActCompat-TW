@@ -6,22 +6,22 @@ param(
     [string] $OutputDirectory = "artifacts/release",
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedAssemblyVersion = "0.4.5.7",
+    [string] $ExpectedAssemblyVersion = "0.4.5.15",
 
     [Parameter(Mandatory = $false)]
     [int] $ExpectedDalamudApiLevel = 15,
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedIinactVersion = "2.10.3.8",
+    [string] $ExpectedIinactVersion = "2.10.3.11",
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedOverlayPluginVersion = "0.19.108.0",
+    [string] $ExpectedOverlayPluginVersion = "0.19.111.0",
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedUnscramblerVersion = "7.56.1.0",
+    [string] $ExpectedUnscramblerVersion = "7.57.1.0",
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedFfxivActPluginVersion = "3.0.3.1",
+    [string] $ExpectedFfxivActPluginVersion = "3.0.3.4",
 
     [Parameter(Mandatory = $false)]
     [string] $ExpectedMachinaVersion = "2.3.1.3",
@@ -164,6 +164,14 @@ New-Item -ItemType Directory -Force -Path $validationDir | Out-Null
 Expand-Archive -Path $destination -DestinationPath $validationDir -Force
 
 $packagedFiles = @(Get-ChildItem -LiteralPath $validationDir -Recurse -File)
+# These adapters accept user-supplied plugins; a local import must never become
+# an accidental redistribution through a stale build/output directory.
+$manualOnlyFiles = @($packagedFiles | Where-Object {
+    $_.Name -match '^(ACTLogsUploader.*|ACT\.JSB_5\.dll|神兵科技\.dll|ClearScriptV8\.win-x64\.dll|ClearScript\.V8\.ICUData\.dll)$'
+})
+if ($manualOnlyFiles.Count -gt 0) {
+    throw "Plugin ZIP contains manual-only extension files: $($manualOnlyFiles.Name -join ', ')"
+}
 $debugSymbols = @($packagedFiles | Where-Object { $_.Extension -ieq ".pdb" })
 if ($debugSymbols.Count -gt 0) {
     $relativeDebugSymbols = @($debugSymbols | ForEach-Object {
@@ -236,6 +244,25 @@ if ($missingUiAssets.Count -gt 0) {
 }
 
 Write-Host "Validated UI assets: $($requiredUiAssets.Count)"
+
+# The help shows screenshots in the UI language; a missing file silently falls back to
+# another language, so the package must carry the full set.
+$helpImages = @(
+    "account-login", "account-discord", "control-overview", "control-meter", "control-overlays",
+    "control-extensions", "control-cloud", "control-diagnostics", "meter"
+)
+$helpLanguages = @("zh-CN", "zh-TW", "en", "ja", "de", "fr")
+$missingHelpImages = @(foreach ($language in $helpLanguages) {
+    foreach ($image in $helpImages) {
+        $relativePath = "Assets/Help/$language/$image.png"
+        if (-not (Test-Path (Join-Path $validationDir $relativePath))) { $relativePath }
+    }
+})
+if ($missingHelpImages.Count -gt 0) {
+    throw "Plugin ZIP is missing help screenshots: $($missingHelpImages -join ', ')"
+}
+
+Write-Host "Validated help screenshots: $($helpLanguages.Count * $helpImages.Count)"
 
 $jobIconRoot = Join-Path $validationDir "Assets/JobIcons"
 $jobCodes = @(
@@ -340,6 +367,7 @@ $requiredRuntimeFiles = @(
     "LICENSES/IINACT-GPL-3.0.txt",
     "LICENSES/OverlayPlugin.Core-LICENSE.txt",
     "LICENSES/WindowsCommunityToolkit-MIT.md",
+    "LICENSES/ClearScript-LICENSE.txt",
     "THIRD_PARTY_NOTICES.md",
     "BundledActPlugins/bundled-plugins.lock.json",
     "BundledActPlugins/triggernometry/zh-CN.triglations.xml",

@@ -17,6 +17,13 @@ Windows Notification Center delivery uses Microsoft.Toolkit.Uwp.Notifications
 7.1.3 from the Windows Community Toolkit. It is licensed under MIT; its license
 text is included as `LICENSES/WindowsCommunityToolkit-MIT.md`.
 
+The Host uses Microsoft's ClearScript Core/V8 managed bindings 7.5.0 to support
+user-imported ACTLogsUploader packages under modern .NET. ClearScript is licensed
+under MIT; the complete upstream notice is included as `LICENSES/ClearScript-LICENSE.txt`.
+Source: <https://github.com/microsoft/ClearScript/tree/7.5.0>.
+ACTLogsUploader, the Titan tool (`ACT.JSB_5`), and their native V8/ICU companions
+are not bundled or downloaded by DACT; users supply those files themselves.
+
 The release archive also includes the official OverlayPlugin/cactbot release
 package. On first load, DalamudActCompat installs it into the current user's
 own plugin configuration directory; on a later DalamudActCompat update, it
@@ -45,7 +52,7 @@ and verification; the notice does not open them. SilverDasher is installed
 disabled and is loaded only after the user explicitly enables it. Cafe.Matcha
 is enabled after installation and starts last in its own dedicated Host process.
 
-- Triggernometry CN Maintained Edition 2.2.0.1
+- Triggernometry CN Maintained Edition 2.3.0.0
   - Original author/copyright holder: Paissa Heavy Industries
   - Current CN maintainer and distributor: MnFeN
   - Project/source: <https://github.com/MnFeN/Triggernometry>

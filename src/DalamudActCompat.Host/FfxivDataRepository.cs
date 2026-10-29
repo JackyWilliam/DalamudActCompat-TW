@@ -9,7 +9,12 @@ namespace DalamudActCompat.Host;
 internal sealed class FfxivDataRepository : IDataRepository
 {
     private const uint InvalidEntityId = 0xE0000000;
+    // Long open-world sessions keep spawning new actors; resetting the history is cheaper
+    // than growing it forever and only costs one bounded log wait for an old actor.
+    private const int MaximumSeenEntities = 65_536;
     private readonly object syncRoot = new();
+    private readonly HashSet<uint> seenEntities = [];
+    private uint seenTerritoryId;
     private HostFfxivEntitySnapshot snapshot = new(0, 0, DateTimeOffset.MinValue, []);
     private Dictionary<uint, HostFfxivCombatant> baselineCombatants = [];
     private DateTimeOffset baselineTimestamp = DateTimeOffset.MinValue;
@@ -78,7 +83,29 @@ internal sealed class FfxivDataRepository : IDataRepository
             baselineTimestamp = next.Timestamp;
             lastEntityUpdateTimestamp = next.Timestamp;
             combatants = MapCombatants(nextById.Values, next.CurrentPlayerId);
+            RecordSeenLocked(next.TerritoryId, nextById.Keys);
         }
+    }
+
+    /// <summary>Whether the actor has appeared in any snapshot of the current territory.</summary>
+    internal bool HasSeenEntity(uint id)
+    {
+        lock (syncRoot)
+        {
+            return seenEntities.Contains(id);
+        }
+    }
+
+    private void RecordSeenLocked(uint territoryId, IEnumerable<uint> ids)
+    {
+        // Actor IDs are reused across territories, so history from another zone is meaningless.
+        if (territoryId != seenTerritoryId || seenEntities.Count > MaximumSeenEntities)
+        {
+            seenEntities.Clear();
+            seenTerritoryId = territoryId;
+        }
+
+        seenEntities.UnionWith(ids);
     }
 
     internal bool ApplyDelta(HostFfxivEntityDelta delta)
@@ -118,6 +145,7 @@ internal sealed class FfxivDataRepository : IDataRepository
                 merged.Values.ToArray());
             lastEntityUpdateTimestamp = delta.Timestamp;
             combatants = MapCombatants(merged.Values, delta.CurrentPlayerId);
+            RecordSeenLocked(delta.TerritoryId, delta.Upserts.Select(upsert => upsert.Id).Where(IsValidEntityId));
             return true;
         }
     }

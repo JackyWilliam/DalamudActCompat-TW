@@ -18,6 +18,12 @@ using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Newtonsoft.Json.Linq;
 
+if (args.Length == 3 && args[0] == "--manual-plugins")
+{
+    ManualPluginSmokeTests.Run(args[1], args[2]);
+    return;
+}
+
 if (args.Length is 2 or 3 && args[0] == "--foxtts-layout")
 {
     FoxTtsLayoutSmokeTests.Run(args[1], args.Length == 3 ? args[2] : null);
@@ -27,6 +33,12 @@ if (args.Length is 2 or 3 && args[0] == "--foxtts-layout")
 if (args.Length == 3 && args[0] == "--simulant")
 {
     SimulantSmokeTests.RunOriginal(args[1], args[2]);
+    return;
+}
+
+if (args.Length == 1 && args[0] == "--trigger-reliability")
+{
+    Environment.ExitCode = (await TriggerReliabilityTests.RunAsync()).Count == 0 ? 0 : 1;
     return;
 }
 
@@ -43,12 +55,13 @@ var u7bProbe = string.Equals(focusedProbe, "--probe-triggernometry-u7b", StringC
 var u7bOrderingProbe = string.Equals(focusedProbe, "--probe-triggernometry-u7b-ordering", StringComparison.Ordinal);
 var drawingProbe = string.Equals(focusedProbe, "--probe-drawing-diagnostics", StringComparison.Ordinal);
 var drawingSoakProbe = string.Equals(focusedProbe, "--probe-drawing-soak", StringComparison.Ordinal);
-var effectiveArgs = entityTimingProbe || mapEffectProbe || u7bProbe || u7bOrderingProbe || drawingProbe || drawingSoakProbe ? args[1..] : args;
+var timingProbe = string.Equals(focusedProbe, "--probe-triggernometry-timing", StringComparison.Ordinal);
+var effectiveArgs = entityTimingProbe || mapEffectProbe || u7bProbe || u7bOrderingProbe || drawingProbe || drawingSoakProbe || timingProbe ? args[1..] : args;
 if (effectiveArgs.Length is not (1 or 2 or 3))
 {
     throw new ArgumentException(
         "Pass Host.exe and optionally <triggernometry.dll>, or <plugin-root> <config-root>. " +
-        "Use --probe-triggernometry-entity-timing, --probe-triggernometry-mapeffect, --probe-triggernometry-u7b, --probe-triggernometry-u7b-ordering, --probe-drawing-diagnostics or --probe-drawing-soak " +
+        "Use --probe-triggernometry-entity-timing, --probe-triggernometry-mapeffect, --probe-triggernometry-u7b, --probe-triggernometry-u7b-ordering, --probe-triggernometry-timing, --probe-drawing-diagnostics or --probe-drawing-soak " +
         "with the three-path form for a focused probe.");
 }
 
@@ -120,6 +133,22 @@ if (u7bProbe || u7bOrderingProbe)
     return;
 }
 
+if (timingProbe)
+{
+    if (pluginRoot is null || configRoot is null)
+    {
+        throw new ArgumentException(
+            "The timing probe requires Host.exe, <plugin-root>, and <config-root>.");
+    }
+
+    await ValidateTriggernometryTimingProbeAsync();
+    return;
+}
+
+var reliabilityFailures = await TriggerReliabilityTests.RunAsync();
+Assert(
+    reliabilityFailures.Count == 0,
+    "Trigger reliability regressions failed: " + string.Join("; ", reliabilityFailures));
 await ValidateHandshakeCommandBoundaryAndShutdownAsync();
 ValidateForegroundNotificationRouting();
 ValidateFoxTtsDefaultConfiguration();
@@ -1083,6 +1112,7 @@ void ValidateTriggernometryAssemblyRewrite(string assemblyPath)
         ValidateTriggernometryLaunchProcessPatch();
         var implementation = loadContext.Assemblies.Single(assembly => assembly.GetName().Name == "TriggernometryPlugin");
         DrawingDiagnosticTests.ValidateRewrittenAssembly(implementation);
+        ValidateTriggernometryEventTimePatch(patchedTriggernometryAssemblyPath);
         var transcriber = implementation.GetType("Triggernometry.FFXIV.LogTranscribe.LogTranscriber");
         if (transcriber is not null)
         {
@@ -1119,6 +1149,31 @@ void ValidateTriggernometryAssemblyRewrite(string assemblyPath)
     {
         loadContext.Unload();
     }
+}
+
+void ValidateTriggernometryEventTimePatch(string assemblyPath)
+{
+    using var module = ModuleDefinition.ReadModule(assemblyPath);
+    bool CallsNow(MethodDefinition method) => method.Body.Instructions.Any(instruction =>
+        instruction.Operand is MethodReference { Name: "get_Now", DeclaringType.FullName: "System.DateTime" });
+    bool CallsBridge(MethodDefinition method, string name) => method.Body.Instructions.Any(instruction =>
+        instruction.Operand is MethodReference reference &&
+        reference.Name == name &&
+        reference.DeclaringType.Name == nameof(HostPluginBridge));
+    var plugin = module.GetType("Triggernometry.Core.RealPlugin");
+    var trigger = module.Types.SelectMany(EnumerateCecilTypes).Single(type =>
+        type.Name == "Trigger" && type.Methods.Any(method => method.Name == "UpdateFireTiming"));
+    var queuer = plugin.Methods.Single(method => method.Name == "LogLineQueuer" && method.Parameters.Count == 3);
+    var testTrigger = plugin.Methods.Single(method => method.Name == "TestTrigger" && method.Parameters.Count == 3);
+    var fireTiming = trigger.Methods
+        .Where(method => method.Name is "UpdateFireTiming" or "ComputeScheduleBaseTime")
+        .ToArray();
+    Assert(
+        !CallsNow(queuer) && CallsBridge(queuer, nameof(HostPluginBridge.ResolveTriggernometryLogTime)) &&
+        !CallsNow(testTrigger) && CallsBridge(testTrigger, nameof(HostPluginBridge.BeginTriggernometryFire)) &&
+        fireTiming.Length == 2 &&
+        fireTiming.All(method => !CallsNow(method) && CallsBridge(method, nameof(HostPluginBridge.TriggernometryFireNow))),
+        "The bundled Triggernometry still measures refire windows and action delays with Host receipt time.");
 }
 
 async Task ValidateSequenceRegressionTerminatesHostAsync()
@@ -2524,6 +2579,254 @@ async Task ValidateTriggernometryEntityTimingProbeAsync()
     }
 }
 
+async Task ValidateTriggernometryTimingProbeAsync()
+{
+    await PrepareLegacySmokeConfigurationAsync();
+    // Only the timing triggers are loaded, so no other closed-loop probe can add TTS noise.
+    const string timingConfiguration = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <Configuration DebugLevel="Verbose" LogNormalEvents="false" FfxivLogNetwork="false" ShowWelcome="false" WarnAdmin="true" UpdateNotifications="Yes" UpdateCheckMethod="External" UpdateExternalChannelUrl="http://127.0.0.1:1/should-not-run.xml" StartupTriggerType="Trigger" StartupTriggerId="00000000-0000-0000-0000-000000000000" TtsMethod="ACT" StartEndpointOnLaunch="false" AutosaveEnabled="false" Language="English (en)" PreviousNotifiedPluginVersion="2.1.1.2" PluginVersion="2.1.1.2">
+          <Root Id="2f6f2d0e-7a3e-4f71-9c0e-4d7f7d3c1a10" Enabled="true" Name="Timing probe">
+            <Triggers>
+              <Trigger Enabled="true" Id="9d0c3b1e-0f5a-4f0f-8a64-1f2b9a6c0b01" Name="Refire window in game time" RegularExpression="ACTCOMPAT_REFIRE_(?&lt;n&gt;\d+)" Source="Log" PeriodRefire="Deny" RefirePeriodExpression="1000">
+                <Actions>
+                  <Action ActionType="UseTTS" OrderNumber="1" UseTTSTextExpression="ACTCOMPAT_REFIRE_FIRED_${n}" />
+                </Actions>
+              </Trigger>
+              <Trigger Enabled="true" Id="9d0c3b1e-0f5a-4f0f-8a64-1f2b9a6c0b02" Name="Probe sentinel" RegularExpression="ACTCOMPAT_SENTINEL_(?&lt;n&gt;\d+)" Source="Log">
+                <Actions>
+                  <Action ActionType="UseTTS" OrderNumber="1" UseTTSTextExpression="ACTCOMPAT_SENTINEL_${n}" />
+                </Actions>
+              </Trigger>
+              <Trigger Enabled="true" Id="9d0c3b1e-0f5a-4f0f-8a64-1f2b9a6c0b03" Name="Startup replay" RegularExpression="ACTCOMPAT_REPLAY_STALE" Source="Log">
+                <Actions>
+                  <Action ActionType="UseTTS" OrderNumber="1" UseTTSTextExpression="ACTCOMPAT_REPLAY_STALE" />
+                </Actions>
+              </Trigger>
+              <Trigger Enabled="true" Id="9d0c3b1e-0f5a-4f0f-8a64-1f2b9a6c0b04" Name="Entity referenced before its snapshot" RegularExpression="ACTCOMPAT_SPAWN:(?&lt;id&gt;4[0-9A-F]{7})" Source="Log">
+                <Actions>
+                  <Action ActionType="UseTTS" OrderNumber="1" UseTTSTextExpression="ACTCOMPAT_SPAWN_SEEN">
+                    <Condition Enabled="true" Grouping="Or">
+                      <ConditionSingle Enabled="true" ExpressionL="${_entity[${id}].Exist}" ExpressionTypeL="String" ExpressionR="1" ExpressionTypeR="String" ConditionType="StringEqualCase" />
+                    </Condition>
+                  </Action>
+                </Actions>
+              </Trigger>
+            </Triggers>
+          </Root>
+          <RepositoryRoot Name="Remote triggers" Enabled="true">
+            <Repositories />
+          </RepositoryRoot>
+        </Configuration>
+        """;
+    await File.WriteAllTextAsync(
+        Path.Combine(configRoot!, "Config", "Triggernometry.config.xml"),
+        timingConfiguration.Trim());
+    // TN's brokered TTS needs FoxTTS as the isolated provider, and the bundled FoxTTS
+    // directory has no install manifest. Give the probe its own installed-style root.
+    var timingPluginRoot = Path.Combine(configRoot!, "timing-plugins");
+    foreach (var bundled in new[] { "triggernometry", "act.foxtts" })
+    {
+        var source = Path.Combine(pluginRoot!, bundled);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(timingPluginRoot, bundled, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
+    await File.WriteAllTextAsync(
+        Path.Combine(timingPluginRoot, "act.foxtts", "actcompat.plugin.json"),
+        JsonSerializer.Serialize(new
+        {
+            id = "act.foxtts",
+            name = "ACT.FoxTTS",
+            entryAssembly = "ACT.FoxTTS.dll",
+            entryType = "ACT.FoxTTS.FoxTTSPlugin",
+        }));
+    var (host, pipe, session) = await StartConnectedHostAsync(
+        loadPlugins: true,
+        faultInjection: true,
+        pluginRootOverride: timingPluginRoot);
+    await using (pipe)
+    using (host)
+    {
+        try
+        {
+            _ = await ReadWithTimeoutAsync(pipe);
+            var clientSequence = 1L;
+            async Task SendAsync<T>(string type, HostMessagePriority priority, T payload, string? correlationId = null)
+                => await HostFrameCodec.WriteAsync(
+                    pipe.Writer,
+                    HostEnvelope.Create(session, clientSequence++, type, priority, payload, correlationId),
+                    CancellationToken.None);
+
+            // ACT and network forms carry the same game-side event time, as DACT publishes them.
+            HostLogEvent Line(string text, DateTimeOffset at)
+                => new(
+                    at,
+                    $"00|{at.ToLocalTime():yyyy-MM-ddTHH:mm:ss.fffffffzzz}|0000|{text}|",
+                    false,
+                    $"[{at.ToLocalTime():HH:mm:ss.fff}] 0 00:0000:{text}");
+            Task SendLinesAsync(params HostLogEvent[] lines)
+            {
+                Console.WriteLine($"TIMING_PROBE_SEND {DateTime.Now:HH:mm:ss.fff} {string.Join(",", lines.Select(line => line.ActLine))}");
+                return SendAsync(HostMessageTypes.LogBatch, HostMessagePriority.Data, lines);
+            }
+
+            var spoken = new List<string>();
+            async Task<HostEnvelope> ReadRecordingAsync(Func<HostEnvelope, bool> done)
+            {
+                // Heartbeats arrive once per second, so this bounds each stage to about a minute.
+                for (var index = 0; index < 60; index++)
+                {
+                    var envelope = await ReadWithTimeoutAsync(pipe);
+                    if (envelope.Type == HostMessageTypes.CommandRequest &&
+                        envelope.Payload.Deserialize<HostCommandRequest>() is { Command: "tts" } request)
+                    {
+                        spoken.Add(request.Arguments.GetValueOrDefault("text") ?? string.Empty);
+                        Console.WriteLine($"TIMING_PROBE_TTS {DateTime.Now:HH:mm:ss.fff} {spoken[^1]}");
+                        await SendAsync(
+                            HostMessageTypes.CommandResult,
+                            HostMessagePriority.Control,
+                            new HostCommandResult(true, "completed", "timing-probe"),
+                            envelope.CorrelationId);
+                    }
+
+                    if (done(envelope))
+                    {
+                        return envelope;
+                    }
+                }
+
+                throw new InvalidOperationException(
+                    $"Timing probe did not observe its expected frame; spoken=[{string.Join(",", spoken)}].");
+            }
+
+            async Task<List<string>> SpeakUntilSentinelAsync(int sentinel)
+            {
+                var start = spoken.Count;
+                var marker = $"ACTCOMPAT_SENTINEL_{sentinel}";
+                await SendLinesAsync(Line(marker, DateTimeOffset.Now));
+                await ReadRecordingAsync(_ => spoken.Count > start && spoken[^1] == marker);
+                var stage = spoken.Skip(start).ToList();
+                Console.WriteLine($"TIMING_PROBE_STAGE {sentinel}: [{string.Join(",", stage)}]");
+                return stage;
+            }
+
+            await SendAsync(
+                HostMessageTypes.Hello,
+                HostMessagePriority.Control,
+                new HostHello("timing-probe", "1", Environment.ProcessId, [HostProtocol.CurrentVersion]));
+            await ReadUntilAsync(pipe, HostMessageTypes.HelloAck, 90);
+            await SendAsync(
+                HostMessageTypes.Permissions,
+                HostMessagePriority.Control,
+                new HostPermissionSnapshot(
+                    new Dictionary<string, IReadOnlyList<string>>
+                    {
+                        ["triggernometry"] = ["ReadCombatLogs", "ReadLocalConfiguration", "TextToSpeech"],
+                    },
+                    // FoxTTS is the isolated speech provider that TN's brokered TTS requires.
+                    ["triggernometry", "act.foxtts"]),
+                "timing-permissions");
+            await SendAsync(
+                HostMessageTypes.ZoneChanged,
+                HostMessagePriority.Critical,
+                new HostZoneEvent(1, "Host Smoke Zone", DateTimeOffset.UtcNow));
+            var baseline = CreateTestFfxivSnapshot();
+            await SendAsync(HostMessageTypes.FfxivEntities, HostMessagePriority.State, baseline);
+
+            // 4. A line received while plugins start is buffered; one minute later it is
+            // no longer a valid callout and must not be replayed as if it just happened.
+            await SendLinesAsync(Line("ACTCOMPAT_REPLAY_STALE", DateTimeOffset.Now.AddSeconds(-60)));
+            var health = (await ReadRecordingAsync(envelope => envelope.Type == HostMessageTypes.Health))
+                .Payload.Deserialize<HostHealth>();
+            Assert(
+                health?.State == "plugins.ready",
+                $"Timing probe plugins did not become ready: {health?.Detail}");
+            await SpeakUntilSentinelAsync(0);
+
+            // 3a. Two refire-denied events 1.5 s apart in game time arrive in one burst.
+            var origin = DateTimeOffset.Now.AddSeconds(-10);
+            await SendLinesAsync(
+                Line("ACTCOMPAT_REFIRE_1", origin),
+                Line("ACTCOMPAT_REFIRE_2", origin.AddMilliseconds(1_500)));
+            await SpeakUntilSentinelAsync(1);
+
+            // 3b. Two events 300 ms apart in game time arrive 1.2 s apart (a Host stall).
+            await Task.Delay(1_500);
+            await SendLinesAsync(Line("ACTCOMPAT_REFIRE_3", origin.AddSeconds(5)));
+            await Task.Delay(1_200);
+            await SendLinesAsync(Line("ACTCOMPAT_REFIRE_4", origin.AddMilliseconds(5_300)));
+            await SpeakUntilSentinelAsync(2);
+
+            // 2. The game logs an actor one frame before its snapshot reaches the Host.
+            await SendLinesAsync(Line("ACTCOMPAT_SPAWN:40001234:", DateTimeOffset.Now));
+            await Task.Delay(80);
+            var spawned = CreateTestFfxivSnapshot(includeTarget: true).Combatants
+                .Single(combatant => combatant.Id == 0x10005678) with { Id = 0x40001234 };
+            await SendAsync(
+                HostMessageTypes.FfxivEntityDelta,
+                HostMessagePriority.State,
+                new HostFfxivEntityDelta(
+                    baseline.TerritoryId,
+                    baseline.CurrentPlayerId,
+                    baseline.Timestamp,
+                    DateTimeOffset.UtcNow,
+                    [spawned],
+                    []));
+            await SpeakUntilSentinelAsync(3);
+
+            // Actions due at past game times and the sentinel's action can leave TN in either
+            // order within a millisecond, so count each trigger by name after a final drain.
+            var drainUntil = DateTime.UtcNow.AddSeconds(1.5);
+            await ReadRecordingAsync(_ => DateTime.UtcNow >= drainUntil);
+            int Fired(params int[] lines)
+                => spoken.Count(text => lines.Any(line => text == $"ACTCOMPAT_REFIRE_FIRED_{line}"));
+            var staleReplayed = spoken.Contains("ACTCOMPAT_REPLAY_STALE");
+            var burstFires = Fired(1, 2);
+            var stallFires = Fired(3, 4);
+            var spawnSeen = spoken.Contains("ACTCOMPAT_SPAWN_SEEN");
+
+            Console.WriteLine(
+                "TRIGGERNOMETRY_TIMING_RESULT " +
+                $"staleReplayed={staleReplayed} burstFires={burstFires} stallFires={stallFires} spawnSeen={spawnSeen}");
+            Assert(!staleReplayed, "A one-minute-old startup log was replayed into Triggernometry as a live callout.");
+            Assert(burstFires == 2, $"Refire suppression used Host receipt time: {burstFires} of 2 events 1.5 s apart fired.");
+            Assert(stallFires == 1, $"Refire suppression used Host receipt time: {stallFires} of 2 events 0.3 s apart fired.");
+            Assert(spawnSeen, "A log line that referenced an entity one frame before its snapshot was evaluated without the entity.");
+
+            await SendAsync(
+                HostMessageTypes.Shutdown,
+                HostMessagePriority.Control,
+                new HostHealth("stopping", "timing probe", DateTimeOffset.UtcNow),
+                "timing-shutdown");
+            await ReadUntilAsync(pipe, HostMessageTypes.ShutdownAck, 90);
+            await host.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        catch
+        {
+            var (output, error) = processLogs.TryGetValue(host.Id, out var log)
+                ? log.Snapshot()
+                : (string.Empty, string.Empty);
+            Console.Error.WriteLine(
+                $"Timing probe Host output:{Environment.NewLine}{output}" +
+                $"{Environment.NewLine}Timing probe Host errors:{Environment.NewLine}{error}");
+            throw;
+        }
+        finally
+        {
+            if (!host.HasExited)
+            {
+                host.Kill(entireProcessTree: true);
+                await host.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            }
+        }
+    }
+}
+
 async Task ValidateDrawingDiagnosticProbeAsync()
 {
     await PrepareLegacySmokeConfigurationAsync();
@@ -2557,7 +2860,13 @@ async Task ValidateDrawingDiagnosticProbeAsync()
         new XAttribute("Enabled", "true"), new XAttribute("Id", Guid.NewGuid()), new XAttribute("Name", name),
         new XAttribute("RegularExpression", "^" + name + "$"), new XElement("Actions",
             new XElement("Action", new XAttribute("ActionType", "ExecuteScript"), new XAttribute("ExecScriptExpression", script))));
+    // Force the restore to finish after the sender's short log delay. Its unique marker
+    // must be observed; the initial setup's old output cannot establish readiness here.
+    var restoreSetup = setup.Replace("var plugin = RealPlugin.Instance;",
+        "System.Threading.Thread.Sleep(750); var plugin = RealPlugin.Instance;", StringComparison.Ordinal)
+        .Replace("DACT_DRAW_SETUP_DONE", "DACT_DRAW_RESTORE_DONE", StringComparison.Ordinal);
     root.Add(new XElement("Triggers", ScriptTrigger("DACT_DRAW_SETUP", setup),
+        ScriptTrigger("DACT_DRAW_RESTORE", restoreSetup),
         ScriptTrigger("DACT_DRAW_OFF", "Triggernometry.Core.Scripting.ScriptHelper.SetDictVariable(true, \"U7a_cfg\", new Triggernometry.Core.Variables.VariableDictionary(new System.Collections.Generic.Dictionary<string,string> { {\"P1光轮缩放on\", \"0\"} })); System.Console.WriteLine(\"DACT_DRAW_OFF_DONE\");"),
         ScriptTrigger("DACT_DRAW_THROW", "Triggernometry.Core.Scripting.ScriptHelper.SetScalarVariable(false, \"DACT_DRAW_THROW\", 1); System.Console.WriteLine(\"DACT_DRAW_THROW_DONE\");")));
     configuration.Save(path);
@@ -2610,23 +2919,6 @@ async Task ValidateDrawingDiagnosticProbeAsync()
                 await WaitForProcessOutputAsync(host, marker, TimeSpan.FromSeconds(15), outputStart);
                 Console.WriteLine("Drawing probe: " + marker);
             }
-            async Task WaitForMissingEntityCallback()
-            {
-                // State messages may overtake log actions on a busy runner. Keep
-                // the entity absent until the real callback records that prerequisite.
-                var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-                while (DateTime.UtcNow < deadline)
-                {
-                    var records = DrawingDiagnosticTests.ParseRecords(processLogs[host.Id].Snapshot().Output);
-                    if (records.Any(r => r.GetProperty("stage").GetString() == "callback-enter" &&
-                        r.GetProperty("event").GetProperty("Actor").GetString() == "40FF0002" &&
-                        !r.GetProperty("state").GetProperty("snapshot").GetProperty("present").GetBoolean()))
-                        return;
-                    if (host.HasExited) break;
-                    await Task.Delay(50);
-                }
-                throw new TimeoutException("Missing-entity callback did not run before the late-entity snapshot.");
-            }
             string OrbLine(string time, string id = "40FF0001") =>
                 $"[{time}] ChatLog 03:{id}:PRIVATE_ORB_NAME:0:100:0:0:0:0:17821:0:0:0:0:0:0:100:100:0:";
             await Setup("DACT_DRAW_SETUP", "DACT_DRAW_SETUP_DONE");
@@ -2636,9 +2928,23 @@ async Task ValidateDrawingDiagnosticProbeAsync()
             await Task.Delay(9500); // Exercise the original 8.4-second delayed callback too.
             await Setup("DACT_DRAW_OFF", "DACT_DRAW_OFF_DONE");
             await Line(OrbLine("21:00:20.000"));
-            await Setup("DACT_DRAW_SETUP", "DACT_DRAW_SETUP_DONE");
+            await Setup("DACT_DRAW_RESTORE", "DACT_DRAW_RESTORE_DONE");
             await Line(OrbLine("21:00:30.000", "40FF0002"));
-            await WaitForMissingEntityCallback();
+            bool MissingEntityCallback(JsonElement record) =>
+                record.GetProperty("stage").GetString() == "callback-enter" &&
+                record.GetProperty("event").GetProperty("Actor").GetString() == "40FF0002" &&
+                !record.GetProperty("state").GetProperty("snapshot").GetProperty("present").GetBoolean();
+            // The fixture requires the callback to see an absent entity. Waiting for
+            // that observation prevents a faster state frame from invalidating the scenario.
+            var missingEntityDeadline = DateTime.UtcNow.AddSeconds(15);
+            // ReadProcessLog waits for exit, so use the live log snapshot while the
+            // Host must remain available to receive the late entity frame.
+            while (!DrawingDiagnosticTests.ParseRecords(processLogs[host.Id].Snapshot().Output).Any(MissingEntityCallback))
+            {
+                Assert(DateTime.UtcNow < missingEntityDeadline, "Missing-entity fixture did not reach its callback before the late snapshot.");
+                await Task.Delay(50);
+            }
+            Console.WriteLine("Drawing probe: missing-entity callback observed.");
             await SendAsync(HostMessageTypes.FfxivEntities, HostMessagePriority.State,
                 baseline with { Timestamp = DateTimeOffset.UtcNow, Combatants = [.. baseline.Combatants, orb, orb with { Id = 0x40FF0002, Address = 0x12350000 }] });
             await Task.Delay(9500);
@@ -2657,7 +2963,7 @@ async Task ValidateDrawingDiagnosticProbeAsync()
             Assert(!Stage("observer-error"), "Observer failed during U7a chain.");
             Assert(records.Any(r => r.GetProperty("stage").GetString() == "condition-blocked" && r.GetProperty("blocked").GetBoolean()), "Disabled feature condition not recorded.");
             Assert(!records.Any(r => r.GetProperty("stage").GetString() == "callback-enter" && r.GetProperty("event").GetProperty("Time").GetString() == "[21:00:20.000]"), "Diagnostics bypassed a disabled feature.");
-            Assert(records.Any(r => r.GetProperty("stage").GetString() == "callback-enter" && r.GetProperty("event").GetProperty("Actor").GetString() == "40FF0002" && !r.GetProperty("state").GetProperty("snapshot").GetProperty("present").GetBoolean()), "Missing entity prerequisite not recorded at invocation.");
+            Assert(records.Any(MissingEntityCallback), "Missing entity prerequisite not recorded at invocation.");
             Assert(records.Any(r => r.TryGetProperty("state", out var state) && state.TryGetProperty("variables", out var variables) && variables.ValueKind == JsonValueKind.Object && variables.GetProperty("U7a1_光轮_is火safe").GetString() == "1"), "Original cast did not produce observed fire-safe variable.");
             Assert(!string.Join('\n', records.Select(r => r.GetRawText())).Contains("PRIVATE_"), "Player/NPC labels leaked into new diagnostics.");
             var output = Environment.GetEnvironmentVariable("ACTCOMPAT_DRAWING_PROBE_OUTPUT");
@@ -3712,43 +4018,74 @@ void ValidateMatchaAssemblyContract(string packagePath)
                                 throwOnError: true)!
                             ?? throw new TypeLoadException(
                                 "Cafe.Matcha.Constant.OpcodeStorage");
+        var expectedChinaOpcodes = new Dictionary<ushort, string>
+        {
+            [0x0198] = "ActorControl",
+            [0x01E6] = "ActorControlSelf",
+            [0x020A] = "CEDirector",
+            [0x0178] = "CompanyAirshipStatus",
+            [0x039C] = "CompanySubmersibleStatus",
+            [0x028A] = "ContentFinderNotifyPop",
+            [0x01FE] = "ResumeEventScene32",
+            [0x0256] = "EventPlay",
+            [0x0286] = "EventStart",
+            [0x019C] = "Examine",
+            [0x0259] = "FateInfo",
+            [0x02CC] = "InitZone",
+            [0x032D] = "InventoryTransaction",
+            [0x00D1] = "ItemInfo",
+            [0x0234] = "MarketBoardItemListing",
+            [0x010D] = "MarketBoardItemListingCount",
+            [0x011E] = "MarketBoardItemListingHistory",
+            [0x8248] = "MarketBoardRequestItemListingInfo",
+            [0x0114] = "NpcSpawn",
+            [0x0302] = "PlayerSetup",
+            [0x0265] = "PlayerSpawn",
+            [0x0367] = "SubmarineStatusList",
+            [0x007C] = "WorldVisitQueue",
+            [0x0324] = "EventPlay4",
+            [0x00EB] = "SystemLogMessage",
+            [0x03CB] = "FishCaught",
+            [0x02CE] = "StatusEffectList",
+            [0x8368] = "ClientTrigger",
+        };
+        // Global 7.57h values come from FFXIVOpcodes d85eaeb. FateInfo and WorldVisitQueue
+        // have no published 7.57h value yet, so a stale 7.57 guess must not remain.
         var expectedGlobalOpcodes = new Dictionary<ushort, string>
         {
-            [0x025F] = "ActorControl",
-            [0x0204] = "ActorControlSelf",
-            [0x031E] = "CEDirector",
-            [0x006C] = "CompanyAirshipStatus",
-            [0x01EC] = "CompanySubmersibleStatus",
-            [0x0333] = "ContentFinderNotifyPop",
-            [0x024D] = "ResumeEventScene32",
-            [0x01FD] = "EventPlay",
-            [0x02E1] = "EventStart",
-            [0x01F2] = "Examine",
-            [0x0154] = "FateInfo",
-            [0x032B] = "InitZone",
-            [0x023A] = "InventoryTransaction",
-            [0x0084] = "ItemInfo",
-            [0x034D] = "MarketBoardItemListing",
-            [0x00C0] = "MarketBoardItemListingCount",
-            [0x0241] = "MarketBoardItemListingHistory",
-            [0x8320] = "MarketBoardRequestItemListingInfo",
-            [0x020C] = "NpcSpawn",
-            [0x0093] = "PlayerSetup",
-            [0x01C4] = "PlayerSpawn",
-            [0x038A] = "SubmarineStatusList",
-            [0x01E8] = "WorldVisitQueue",
-            [0x01C6] = "EventPlay4",
-            [0x00A8] = "SystemLogMessage",
-            [0x0110] = "FishCaught",
-            [0x0083] = "StatusEffectList",
-            [0x8187] = "ClientTrigger",
+            [0x0229] = "ActorControl",
+            [0x0101] = "ActorControlSelf",
+            [0x034F] = "CEDirector",
+            [0x032E] = "CompanyAirshipStatus",
+            [0x011A] = "CompanySubmersibleStatus",
+            [0x0117] = "ContentFinderNotifyPop",
+            [0x0146] = "ResumeEventScene32",
+            [0x00B4] = "EventPlay",
+            [0x0078] = "EventStart",
+            [0x019E] = "Examine",
+            [0x009C] = "InitZone",
+            [0x01C9] = "InventoryTransaction",
+            [0x0239] = "ItemInfo",
+            [0x0131] = "MarketBoardItemListing",
+            [0x00FF] = "MarketBoardItemListingCount",
+            [0x02DA] = "MarketBoardItemListingHistory",
+            [0x80F2] = "MarketBoardRequestItemListingInfo",
+            [0x017D] = "NpcSpawn",
+            [0x02A6] = "PlayerSetup",
+            [0x017C] = "PlayerSpawn",
+            [0x0166] = "SubmarineStatusList",
+            [0x0081] = "EventPlay4",
+            [0x0250] = "SystemLogMessage",
+            [0x006A] = "FishCaught",
+            [0x00D4] = "StatusEffectList",
+            [0x837D] = "ClientTrigger",
         };
-        foreach (var region in new[] { "Global", "China" })
+        foreach (var (region, expected) in new[] { ("Global", expectedGlobalOpcodes), ("China", expectedChinaOpcodes) })
         {
             var actual = (IDictionary)opcodeStorage.GetField(region, BindingFlags.Public | BindingFlags.Static)!.GetValue(null)!;
-            Assert(actual.Count == expectedGlobalOpcodes.Count && expectedGlobalOpcodes.All(pair =>
+            Assert(actual.Count == expected.Count && expected.All(pair =>
                 string.Equals(actual[pair.Key]?.ToString(), pair.Value, StringComparison.Ordinal)),
-                $"Matcha {region} opcode storage was not normalized to the verified 7.56 table.");
+                $"Matcha {region} opcode storage was not normalized to its verified table.");
         }
 
         var bridge = loadedAssembly.GetType(
@@ -3865,10 +4202,14 @@ static void ValidateMatchaEventPackets(Assembly assembly)
     var originalRegion = regionProperty.GetValue(config);
     try
     {
-        foreach (var region in new[] { "China", "Global" })
+        foreach (var (region, fishingOpcodes) in new[]
+                 {
+                     ("China", MatchaFishingOpcodes.China757),
+                     ("Global", MatchaFishingOpcodes.Global757Hotfix),
+                 })
         {
             regionProperty.SetValue(config, Enum.Parse(regionType, region));
-            MatchaFishingSmokeTests.Run(assembly, region);
+            MatchaFishingSmokeTests.Run(assembly, region, fishingOpcodes);
             object Packet(ushort opcode, uint first, uint second, uint third, bool client = false)
             {
                 var bytes = new byte[56];
@@ -3878,14 +4219,26 @@ static void ValidateMatchaEventPackets(Assembly assembly)
                 BitConverter.GetBytes(third).CopyTo(bytes, 48);
                 return Activator.CreateInstance(packetType, Enum.Parse(senderType, client ? "Client" : "Server"), bytes, 1700000000000L)!;
             }
+            if (region == "Global")
+            {
+                // Global 7.57h has no published FateInfo/WorldVisitQueue opcode. The old 7.57
+                // values now belong to unrelated packets and must not be parsed as either.
+                Assert(packetType.GetField("Known")!.GetValue(Packet(0x0259, 1234, 1700000000, 900)) is false &&
+                    packetType.GetField("Known")!.GetValue(Packet(0x007C, 1, 45, 0)) is false &&
+                    packetType.GetField("Known")!.GetValue(Packet(0xF009, 0, 0, 0)) is false &&
+                    packetType.GetField("Known")!.GetValue(Packet(0x00E9, 0, 0, 0)) is false,
+                    "Matcha Global still parses stale 7.57 FateInfo/WorldVisitQueue opcodes.");
+                continue;
+            }
+
             fates.GetType().GetMethod("Clear")!.Invoke(fates, null);
-            var fate = Packet(0x0154, 1234, 1700000000, 900);
+            var fate = Packet(0x0259, 1234, 1700000000, 900);
             Assert(handle.Invoke(monitor, [fate]) is true, $"Matcha {region} did not route FateInfo.");
             var parsed = fates.GetType().GetProperty("Item")!.GetValue(fates, [1234u])!;
             Assert((uint)parsed.GetType().GetField("StartTime")!.GetValue(parsed)! == 1700000000 &&
                 (uint)parsed.GetType().GetField("Duration")!.GetValue(parsed)! == 900,
                 $"Matcha {region} lost FATE time/duration.");
-            var visit = Packet(0x01E8, 1, 45, 0);
+            var visit = Packet(0x007C, 1, 45, 0);
             var bytes = (byte[])packetType.GetField("Bytes")!.GetValue(visit)!;
             BitConverter.GetBytes(7u).CopyTo(bytes, 36);
             events.Clear();
@@ -3896,7 +4249,7 @@ static void ValidateMatchaEventPackets(Assembly assembly)
                 (uint)payload.GetType().GetField("Order")!.GetValue(payload)! == 7 &&
                 (uint)payload.GetType().GetField("Time")!.GetValue(payload)! == 45,
                 $"Matcha {region} lost queue position/wait time.");
-            Assert(packetType.GetField("Known")!.GetValue(Packet(0x0154, 0, 0, 0, client: true)) is false &&
+            Assert(packetType.GetField("Known")!.GetValue(Packet(0x0259, 0, 0, 0, client: true)) is false &&
                 packetType.GetField("Known")!.GetValue(Packet(0xF009, 0, 0, 0)) is false &&
                 packetType.GetField("Known")!.GetValue(Packet(0x00E9, 0, 0, 0)) is false,
                 $"Matcha {region} accepted a stale or wrong-direction event opcode.");
@@ -3960,7 +4313,7 @@ async Task ValidateGenericPluginLoadsOnlyAfterConsentAsync()
                         "game-bridge",
                         "1",
                         Environment.ProcessId,
-                        [HostProtocol.CurrentVersion])),
+                        [HostProtocol.CurrentVersion], CombatLogDirectory: temporaryRoot)),
                 CancellationToken.None);
             await ReadUntilAsync(pipe, HostMessageTypes.HelloAck);
             await HostFrameCodec.WriteAsync(
@@ -3977,6 +4330,7 @@ async Task ValidateGenericPluginLoadsOnlyAfterConsentAsync()
                             [
                                 "ReadCombatLogs",
                                 "ReadLocalConfiguration",
+                                "TextToSpeech",
                             ],
                         },
                         ["community.allowed"])),
@@ -4006,11 +4360,31 @@ async Task ValidateGenericPluginLoadsOnlyAfterConsentAsync()
                     stage.State == "success"),
                 "Untrusted generic plugin entered the shared Host's successful stage set.");
 
+            var sequence = 2L;
+            async Task Send(string type, object payload)
+                => await HostFrameCodec.WriteAsync(pipe.Writer,
+                    HostEnvelope.Create(session, ++sequence, type, HostMessagePriority.Control, payload), CancellationToken.None);
+            async Task ExpectLog(string text, bool imported, string path, bool combat)
+            {
+                await Send(HostMessageTypes.LogBatch, new[] { new HostLogEvent(DateTimeOffset.UtcNow, "raw", imported, text) });
+                var reply = (await ReadUntilAsync(pipe, HostMessageTypes.MatchaTtsRequest, 10)).Payload.Deserialize<HostTtsRequest>();
+                Assert(reply is { Source: "generic" } && reply.Text == $"{text}|{imported}|Generic Zone|{combat}|{path}",
+                    "Generic Host lost ACT-formatted logs, import flag, zone/combat state, directory or TTS: " + reply);
+            }
+            // The fixture subscribes only to OnLogLineRead, reproducing the original
+            // missing-before-subscriber failure in the real out-of-process Host.
+            await Send(HostMessageTypes.CombatStarted, new HostCombatEvent(true, DateTimeOffset.UtcNow));
+            await Send(HostMessageTypes.ZoneChanged, new HostZoneEvent(1, "Generic Zone", DateTimeOffset.UtcNow));
+            await ExpectLog("generic-probe:first", false, temporaryRoot, true);
+            await Send(HostMessageTypes.CombatLogDirectory, temporaryConfigRoot);
+            await Send(HostMessageTypes.CombatEnded, new HostCombatEvent(false, DateTimeOffset.UtcNow));
+            await ExpectLog("generic-probe:second", true, temporaryConfigRoot, false);
+
             await HostFrameCodec.WriteAsync(
                 pipe.Writer,
                 HostEnvelope.Create(
                     session,
-                    3,
+                    ++sequence,
                     HostMessageTypes.Shutdown,
                     HostMessagePriority.Control,
                     new HostHealth(
@@ -4263,6 +4637,8 @@ void ValidateSilverDasherAssemblyRewrite(string sourceRoot)
     _ = LegacyAssemblyRewriter.LoadSilverDasher(loaderPath, AssemblyLoadContext.Default);
     var rewrittenCore = LegacyAssemblyRewriter.LoadSilverDasherCore(corePath);
     _ = LegacyAssemblyRewriter.LoadSilverDasherManagedZodiark(zodiarkPath);
+    ValidateSilverDasherZodiarkOpenProcess(
+        LegacyAssemblyRewriter.RewriteSilverDasherManagedZodiark(zodiarkPath));
 
     var configurePermissions = typeof(HostPluginBridge).GetMethod(
                                    "ConfigurePermissions",
@@ -4306,6 +4682,8 @@ void ValidateSilverDasherAssemblyRewrite(string sourceRoot)
     var normalizedOpcodes = normalizedOpcodePayload["data"]!
         .Children<JObject>()
         .ToDictionary(item => item.Value<string>("name")!, StringComparer.Ordinal);
+    // Global 7.57h has no published FateInfo opcode; SilverDasher's own placeholder 0xF009
+    // keeps it disabled instead of decoding an unrelated packet as FATE data.
     Assert(
         normalizedOpcodePayload.Value<string>("version") == "20260914" &&
         normalizedOpcodes["InitZone"].Value<string>("cn") == "0x00EB" &&
@@ -4532,6 +4910,32 @@ void ValidateSilverDasherAssemblyRewrite(string sourceRoot)
         Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(weaverPath))) == weaverHash,
         "SilverDasher runtime rewriting changed the user's original DLL files.");
+}
+
+static void ValidateSilverDasherZodiarkOpenProcess(byte[] rewrittenImage)
+{
+    // DACT starts SilverDasher while the game is still loading. A plugin that blocked the
+    // game window for 10 s made Process.Responding false, SilverDasher failed its only
+    // initialization and stayed silent until re-enabled. Reading memory needs no window.
+    using var definition = AssemblyDefinition.ReadAssembly(new MemoryStream(rewrittenImage));
+    var openProcess = definition.MainModule.GetType("Zodiark.ZodiarkProcess")!.Methods.Single(method =>
+        method.Name == "OpenProcess" && method.Parameters.Count == 1);
+    var processCalls = openProcess.Body.Instructions
+        .Select(instruction => instruction.Operand as MethodReference)
+        .Where(method => method?.DeclaringType.FullName == typeof(Process).FullName)
+        .Select(method => method!.Name)
+        .ToArray();
+    Assert(
+        !processCalls.Contains("get_Responding") &&
+        !processCalls.Contains(nameof(Process.EnterDebugMode)) &&
+        processCalls.Contains("get_MainModule"),
+        "SilverDasher Zodiark still requires a responsive game window or regained debug mode.");
+    Assert(
+        openProcess.Body.Instructions.Any(instruction =>
+            instruction.OpCode.Code == Code.Ldc_I4 && instruction.Operand is 0x0410) &&
+        !openProcess.Body.Instructions.Any(instruction =>
+            instruction.OpCode.Code == Code.Ldc_I4 && instruction.Operand is 0x001F0FFF),
+        "SilverDasher Zodiark process access widened beyond query information and VM read.");
 }
 
 void ValidateSilverDasherNotificationRouting()
@@ -5662,10 +6066,19 @@ public sealed class GenericActPluginHostFixture : IActPluginV1
     {
         pluginScreenSpace.Text = "Generic Host fixture";
         pluginStatusText.Text = "generic ready";
+        ActGlobals.oFormActMain.OnLogLineRead += OnLog;
+    }
+
+    private static void OnLog(bool imported, LogLineEventArgs args)
+    {
+        if (!args.logLine.StartsWith("generic-probe:", StringComparison.Ordinal)) return;
+        var act = ActGlobals.oFormActMain;
+        act.TTS($"{args.logLine}|{imported}|{act.CurrentZone}|{act.InCombat}|{HostPluginBridge.ResolveUploaderLogDirectory(null)}");
     }
 
     public void DeInitPlugin()
     {
+        ActGlobals.oFormActMain.OnLogLineRead -= OnLog;
     }
 }
 

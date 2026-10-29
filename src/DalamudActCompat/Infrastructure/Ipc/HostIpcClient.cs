@@ -13,12 +13,20 @@ namespace DalamudActCompat.Infrastructure.Ipc;
 
 public sealed class HostIpcClient : IAsyncDisposable
 {
+    // The Host reader also replays startup-buffered events and runs plugin callbacks, so a
+    // busy but healthy reader may hold a frame for a while. Match the Host's own 15 s plugin
+    // startup limit and fault only a reader that is genuinely stuck.
+    private static readonly TimeSpan ReaderStallLimit = TimeSpan.FromSeconds(15);
     private readonly EncounterStateStore stateStore;
     private readonly PluginLogger logger;
     private readonly Func<HostPermissionSnapshot> permissionSnapshot;
     private readonly Func<HostGameContext?> gameContext;
+    private readonly Func<string?> combatLogDirectory;
+    private string? publishedCombatLogDirectory;
+    private readonly string expectedTtsSource;
     private readonly SemaphoreSlim lifecycleLock = new(1, 1);
-    private readonly BoundedHostMessageQueue outbound = new();
+    private readonly object statusLock = new();
+    private readonly BoundedHostMessageQueue outbound;
     private readonly ConcurrentQueue<HostDiagnostic> diagnostics = new();
     private CancellationTokenSource? sessionCancellation;
     private NamedPipeClientStream? bridgeInput;
@@ -34,6 +42,7 @@ public sealed class HostIpcClient : IAsyncDisposable
     private long hostLastReceivedSequence;
     private long lastHeartbeatTicks;
     private long lastHostProgressTicks;
+    private long pendingWriteStartedTicks;
     private long hostWorkingSetBytes;
     private long hostPrivateBytes;
     private long availablePhysicalMemoryBytes;
@@ -48,15 +57,21 @@ public sealed class HostIpcClient : IAsyncDisposable
         EncounterStateStore stateStore,
         PluginLogger logger,
         Func<HostPermissionSnapshot>? permissionSnapshot = null,
-        Func<HostGameContext?>? gameContext = null)
+        Func<HostGameContext?>? gameContext = null,
+        Func<string?>? combatLogDirectory = null,
+        string expectedTtsSource = "matcha")
     {
         this.stateStore = stateStore;
         this.logger = logger;
+        outbound = new BoundedHostMessageQueue(
+            type => logger.Warning($"Expired Host IPC message dropped: {type}."));
         this.permissionSnapshot = permissionSnapshot
                                    ?? (() => new HostPermissionSnapshot(
                                        new Dictionary<string, IReadOnlyList<string>>(),
                                        []));
         this.gameContext = gameContext ?? (static () => null);
+        this.combatLogDirectory = combatLogDirectory ?? (static () => null);
+        this.expectedTtsSource = expectedTtsSource;
     }
 
     public event EventHandler<Exception>? Faulted;
@@ -128,6 +143,7 @@ public sealed class HostIpcClient : IAsyncDisposable
             hostLastReceivedSequence = 0;
             lastHeartbeatTicks = DateTimeOffset.UtcNow.UtcTicks;
             lastHostProgressTicks = lastHeartbeatTicks;
+            Volatile.Write(ref pendingWriteStartedTicks, 0);
             hostWorkingSetBytes = 0;
             hostPrivateBytes = 0;
             availablePhysicalMemoryBytes = 0;
@@ -152,16 +168,23 @@ public sealed class HostIpcClient : IAsyncDisposable
                     bridgeOutput.ConnectAsync(TimeSpan.FromSeconds(10), cancellationToken))
                 .ConfigureAwait(false);
             sessionCancellation = new CancellationTokenSource();
+            // A quick stop/reconnect may replace the fields before Task.Run starts.
+            // Each loop must retain the stream and token of its own session.
+            var input = bridgeInput;
+            var output = bridgeOutput;
+            var token = sessionCancellation.Token;
+            // Publish Connected before loops can report a fault, so startup cannot
+            // overwrite an immediate disconnect with a healthy-looking status.
+            status = HostConnectionStatus.Connected;
             writerLoop = Task.Run(
-                () => WriteLoopAsync(bridgeOutput, sessionCancellation.Token),
+                () => ObserveLoopAsync(() => WriteLoopAsync(output, token), token),
                 CancellationToken.None);
             readerLoop = Task.Run(
-                () => ReadLoopAsync(bridgeInput, sessionCancellation.Token),
+                () => ReadLoopAsync(input, token),
                 CancellationToken.None);
             watchdogLoop = Task.Run(
-                () => WatchdogLoopAsync(sessionCancellation.Token),
+                () => ObserveLoopAsync(() => WatchdogLoopAsync(token), token),
                 CancellationToken.None);
-            status = HostConnectionStatus.Connected;
             if (!TryEnqueue(
                     HostMessageTypes.Hello,
                     HostMessagePriority.Control,
@@ -170,7 +193,8 @@ public sealed class HostIpcClient : IAsyncDisposable
                         typeof(HostIpcClient).Assembly.GetName().Version?.ToString() ?? "unknown",
                         Environment.ProcessId,
                         [HostProtocol.CurrentVersion],
-                        gameContext())))
+                        gameContext(),
+                        publishedCombatLogDirectory = combatLogDirectory())))
             {
                 throw new InvalidOperationException("Host control queue rejected the hello message.");
             }
@@ -251,12 +275,12 @@ public sealed class HostIpcClient : IAsyncDisposable
                     }
                 }
             }
-
-            await StopUnlockedAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            lifecycleLock.Release();
+            // Cancelling the graceful ACK wait must not cancel mandatory pipe cleanup.
+            try { await StopUnlockedAsync(CancellationToken.None).ConfigureAwait(false); }
+            finally { lifecycleLock.Release(); }
         }
     }
 
@@ -327,7 +351,7 @@ public sealed class HostIpcClient : IAsyncDisposable
             var queued = await outbound.DequeueAsync(cancellationToken).ConfigureAwait(false);
             if (queued.Deadline is { } deadline && deadline < DateTimeOffset.UtcNow)
             {
-                logger.Warning($"Expired Host IPC message dropped: {queued.Type}.");
+                outbound.RecordExpired(queued);
                 continue;
             }
 
@@ -335,8 +359,19 @@ public sealed class HostIpcClient : IAsyncDisposable
             {
                 Sequence = Interlocked.Increment(ref sendSequence),
             };
-            await HostFrameCodec.WriteAsync(target, envelope, cancellationToken)
-                .ConfigureAwait(false);
+            // The pipes have no buffer, so a write completes only when the Host reads it.
+            // While its reader is stuck in a plugin callback, this write stays pending and
+            // the acknowledged sequence keeps matching the written one; time the write itself.
+            Volatile.Write(ref pendingWriteStartedTicks, DateTimeOffset.UtcNow.UtcTicks);
+            try
+            {
+                await HostFrameCodec.WriteAsync(target, envelope, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                Volatile.Write(ref pendingWriteStartedTicks, 0);
+            }
             var previousWritten = Interlocked.Exchange(
                 ref lastWrittenSequence,
                 envelope.Sequence);
@@ -347,6 +382,18 @@ public sealed class HostIpcClient : IAsyncDisposable
                 // next legitimate event appear five seconds overdue instantly.
                 Volatile.Write(ref lastHostProgressTicks, DateTimeOffset.UtcNow.UtcTicks);
             }
+        }
+    }
+
+    private async Task ObserveLoopAsync(Func<Task> loop, CancellationToken cancellationToken)
+    {
+        try { await loop().ConfigureAwait(false); }
+        catch (Exception) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            // A serialization/write or watchdog failure can leave incoming heartbeats
+            // healthy forever. Report it immediately so the supervisor can recover.
+            MarkFaulted(ex);
         }
     }
 
@@ -384,7 +431,7 @@ public sealed class HostIpcClient : IAsyncDisposable
                 ApplyMessage(envelope);
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception) when (cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
@@ -398,12 +445,31 @@ public sealed class HostIpcClient : IAsyncDisposable
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
+            if (Status == HostConnectionStatus.Faulted) return;
+            // Follow the parser's actual writer, including a failed folder change that
+            // leaves the old writer active. A coalesced state frame cannot flood IPC.
+            var directory = combatLogDirectory();
+            if (!string.Equals(directory, publishedCombatLogDirectory, StringComparison.Ordinal) &&
+                TryEnqueue(HostMessageTypes.CombatLogDirectory, HostMessagePriority.State, directory))
+                publishedCombatLogDirectory = directory;
             var elapsed = DateTimeOffset.UtcNow -
                           new DateTimeOffset(Volatile.Read(ref lastHeartbeatTicks), TimeSpan.Zero);
             if (elapsed >= HostProtocol.DeadAfter)
             {
                 MarkFaulted(new TimeoutException(
                     $"ACT Host heartbeat missing for {elapsed.TotalSeconds:0.0} seconds."));
+                return;
+            }
+
+            var pendingWriteSince = Volatile.Read(ref pendingWriteStartedTicks);
+            var pendingWriteElapsed = pendingWriteSince == 0
+                ? TimeSpan.Zero
+                : DateTimeOffset.UtcNow - new DateTimeOffset(pendingWriteSince, TimeSpan.Zero);
+            if (pendingWriteElapsed >= ReaderStallLimit)
+            {
+                MarkFaulted(new TimeoutException(
+                    "ACT Host heartbeat is alive but it has not read the next IPC frame for " +
+                    $"{pendingWriteElapsed.TotalSeconds:0.0} seconds; its event reader is blocked."));
                 return;
             }
 
@@ -423,9 +489,15 @@ public sealed class HostIpcClient : IAsyncDisposable
                 return;
             }
 
-            status = elapsed >= HostProtocol.SuspectAfter
-                ? HostConnectionStatus.Suspect
-                : HostConnectionStatus.Connected;
+            lock (statusLock)
+            {
+                // A writer may fail during this tick. A healthy heartbeat must not
+                // undo that terminal fault or admit more unsendable messages.
+                if (Status == HostConnectionStatus.Faulted) return;
+                status = elapsed >= HostProtocol.SuspectAfter
+                    ? HostConnectionStatus.Suspect
+                    : HostConnectionStatus.Connected;
+            }
         }
     }
 
@@ -594,11 +666,11 @@ public sealed class HostIpcClient : IAsyncDisposable
             case HostMessageTypes.MatchaTtsRequest:
                 var matchaTts = envelope.Payload.Deserialize<HostTtsRequest>();
                 if (matchaTts is null ||
-                    !string.Equals(matchaTts.Source, "matcha", StringComparison.Ordinal) ||
+                    !string.Equals(matchaTts.Source, expectedTtsSource, StringComparison.Ordinal) ||
                     string.IsNullOrWhiteSpace(matchaTts.Text) ||
                     matchaTts.Text.Length > 2000)
                 {
-                    logger.Warning("Matcha Host sent an invalid TTS request; request denied.");
+                    logger.Warning("ACT Host sent an invalid TTS request; request denied.");
                     break;
                 }
 
@@ -609,12 +681,11 @@ public sealed class HostIpcClient : IAsyncDisposable
 
     private void MarkFaulted(Exception exception)
     {
-        if (Status == HostConnectionStatus.Faulted)
+        lock (statusLock)
         {
-            return;
+            if (Status == HostConnectionStatus.Faulted) return;
+            status = HostConnectionStatus.Faulted;
         }
-
-        status = HostConnectionStatus.Faulted;
         logger.Error(exception, "ACT Host IPC faulted; FFXIV remains isolated.");
         Faulted?.Invoke(this, exception);
     }
@@ -640,11 +711,11 @@ public enum HostConnectionStatus
     Faulted,
 }
 
-internal sealed class BoundedHostMessageQueue : IDisposable
+internal sealed class BoundedHostMessageQueue(Action<string>? expired = null) : IDisposable
 {
     private readonly object syncRoot = new();
     private readonly Queue<HostEnvelope> control = new();
-    private readonly Queue<HostEnvelope> data = new();
+    private readonly LinkedList<HostEnvelope> data = new();
     private readonly Dictionary<string, HostEnvelope> state = new(StringComparer.Ordinal);
     private readonly Queue<HostEnvelope> silverDasherData = new();
     private readonly Dictionary<string, HostEnvelope> silverDasherState = new(StringComparer.Ordinal);
@@ -697,7 +768,11 @@ internal sealed class BoundedHostMessageQueue : IDisposable
         lock (syncRoot)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
-            switch (envelope.Priority)
+            if (IsOrderedState(envelope.Type))
+            {
+                added = EnqueueOrderedStateLocked(envelope);
+            }
+            else switch (envelope.Priority)
             {
                 case HostMessagePriority.Control:
                 case HostMessagePriority.Critical:
@@ -710,15 +785,8 @@ internal sealed class BoundedHostMessageQueue : IDisposable
                     added = true;
                     break;
                 case HostMessagePriority.State:
-                    var stateKey = envelope.Type is
-                        HostMessageTypes.CombatStarted or HostMessageTypes.CombatEnded
-                            ? "event.combat.state"
-                            : envelope.Type;
-                    // Combat start/end are two wire messages for one logical state. Using one
-                    // key preserves the latest transition when a noisy open-world encounter
-                    // produces faster than the isolated Host can consume.
-                    added = !state.ContainsKey(stateKey);
-                    state[stateKey] = envelope;
+                    added = !state.ContainsKey(envelope.Type);
+                    state[envelope.Type] = envelope;
                     break;
                 case HostMessagePriority.SilverDasherState:
                     added = !silverDasherState.ContainsKey(envelope.Type);
@@ -740,15 +808,14 @@ internal sealed class BoundedHostMessageQueue : IDisposable
                 default:
                     if (data.Count >= HostProtocol.DataQueueCapacity)
                     {
-                        data.Dequeue();
-                        Interlocked.Increment(ref droppedDataMessages);
+                        DropOldestDataLocked();
                     }
                     else
                     {
                         added = true;
                     }
 
-                    data.Enqueue(envelope);
+                    data.AddLast(envelope);
                     break;
             }
         }
@@ -761,6 +828,13 @@ internal sealed class BoundedHostMessageQueue : IDisposable
         return true;
     }
 
+    /// <summary>Counts a message discarded because its deadline passed before it was written.</summary>
+    public void RecordExpired(HostEnvelope envelope)
+    {
+        Interlocked.Increment(ref droppedDataMessages);
+        expired?.Invoke(envelope.Type);
+    }
+
     public async ValueTask<HostEnvelope> DequeueAsync(CancellationToken cancellationToken)
     {
         while (true)
@@ -768,36 +842,106 @@ internal sealed class BoundedHostMessageQueue : IDisposable
             await available.WaitAsync(cancellationToken).ConfigureAwait(false);
             lock (syncRoot)
             {
-                if (control.TryDequeue(out var controlMessage))
+                while (TryTakeLocked(out var envelope))
                 {
-                    return controlMessage;
-                }
+                    // Discard stale messages here, where they are counted, instead of letting
+                    // the writer skip them invisibly after a stalled Host read.
+                    if (envelope.Deadline is { } deadline && deadline < DateTimeOffset.UtcNow)
+                    {
+                        RecordExpired(envelope);
+                        continue;
+                    }
 
-                if (state.Count > 0)
-                {
-                    var pair = state.First();
-                    state.Remove(pair.Key);
-                    return pair.Value;
-                }
-
-                if (data.TryDequeue(out var dataMessage))
-                {
-                    return dataMessage;
-                }
-
-                if (silverDasherState.Count > 0)
-                {
-                    var pair = silverDasherState.First();
-                    silverDasherState.Remove(pair.Key);
-                    return pair.Value;
-                }
-
-                if (silverDasherData.TryDequeue(out var silverDasherMessage))
-                {
-                    return silverDasherMessage;
+                    return envelope;
                 }
             }
         }
+    }
+
+    private bool TryTakeLocked(out HostEnvelope envelope)
+    {
+        if (control.TryDequeue(out envelope!))
+        {
+            return true;
+        }
+
+        if (state.Count > 0)
+        {
+            var pair = state.First();
+            state.Remove(pair.Key);
+            envelope = pair.Value;
+            return true;
+        }
+
+        if (data.First is { } next)
+        {
+            data.RemoveFirst();
+            envelope = next.Value;
+            return true;
+        }
+
+        if (silverDasherState.Count > 0)
+        {
+            var pair = silverDasherState.First();
+            silverDasherState.Remove(pair.Key);
+            envelope = pair.Value;
+            return true;
+        }
+
+        return silverDasherData.TryDequeue(out envelope!);
+    }
+
+    // Triggernometry tags every log line with the zone and combat state current when the
+    // Host processes it, so these transitions travel in the log lane at their exact place.
+    private static bool IsOrderedState(string type)
+        => type is HostMessageTypes.ZoneChanged or HostMessageTypes.CombatStarted or HostMessageTypes.CombatEnded;
+
+    private static bool IsCombatState(string type)
+        => type is HostMessageTypes.CombatStarted or HostMessageTypes.CombatEnded;
+
+    private bool EnqueueOrderedStateLocked(HostEnvelope envelope)
+    {
+        if (IsCombatState(envelope.Type) && data.Last is { } tail && IsCombatState(tail.Value.Type))
+        {
+            if (tail.Value.Type == envelope.Type)
+            {
+                tail.Value = envelope;
+                return false;
+            }
+
+            // Back-to-back transitions with no logs between them come from noisy open-world
+            // combat detection. Collapse whole start/end cycles, but keep the first and the
+            // newest edge so TN still sees the end-then-start that resets per-pull state.
+            if (tail.Previous is { } middle && IsCombatState(middle.Value.Type) &&
+                middle.Previous is { } first && IsCombatState(first.Value.Type))
+            {
+                data.Remove(middle);
+                data.Remove(tail);
+            }
+        }
+
+        var added = true;
+        if (data.Count >= HostProtocol.DataQueueCapacity)
+        {
+            DropOldestDataLocked();
+            added = false;
+        }
+
+        data.AddLast(envelope);
+        return added;
+    }
+
+    private void DropOldestDataLocked()
+    {
+        // Ordered zone/combat state costs a few bytes and must never be shed for log volume.
+        var node = data.First;
+        while (node is not null && IsOrderedState(node.Value.Type))
+        {
+            node = node.Next;
+        }
+
+        data.Remove(node ?? data.First!);
+        Interlocked.Increment(ref droppedDataMessages);
     }
 
     public void Clear()
