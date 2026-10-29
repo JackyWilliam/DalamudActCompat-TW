@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string] $Package,
     [Parameter(Mandatory)][ValidatePattern('^v\d+\.\d+\.\d+\.\d+$')][string] $ReleaseTag,
-    [string] $OutputPath = (Join-Path $PSScriptRoot '../repo/pluginmaster.json')
+    [string] $OutputPath = (Join-Path $PSScriptRoot '../repo/pluginmaster.json'),
+    [string] $Changelog = '首次台服獨立測試訂閱。預設繁體中文，保留既有語言選擇；提供完整台服候選功能，不包含 Matcha。'
 )
 $ErrorActionPreference = 'Stop'
 $repository = 'https://github.com/JackyWilliam/DalamudActCompat-TW'
@@ -48,7 +49,7 @@ $feed = [ordered]@{
     DownloadLinkUpdate = $download
     DownloadLinkTesting = $download
     LastUpdate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-    Changelog = '首次台服獨立測試訂閱。預設繁體中文，保留既有語言選擇；提供完整台服候選功能，不包含 Matcha。'
+    Changelog = $Changelog
     CanUnloadAsync = $manifest.CanUnloadAsync
     IconUrl = 'https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/Assets/act-logo.jpg'
 }

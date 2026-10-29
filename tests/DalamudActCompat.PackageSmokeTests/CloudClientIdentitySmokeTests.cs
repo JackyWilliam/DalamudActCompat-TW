@@ -24,13 +24,15 @@ internal static class CloudClientIdentitySmokeTests
         var login = await api.LoginAsync("fixture", "isolated-password", "fixture-device", default);
         Check(login.User.Id == "fixture", "Login response changed.");
         await api.ValidateSessionAsync("fixture-token", default);
-        Check(handler.Reports.Count == 2 && handler.Reports.All(r => r.Region == "TW" && r.GameVersion == build && r.Version == "0.4.5.7"),
+        // The header reports the loaded plugin assembly, so the expectation follows each release bump.
+        var pluginVersion = typeof(CloudApiClient).Assembly.GetName().Version!.ToString(4);
+        Check(handler.Reports.Count == 2 && handler.Reports.All(r => r.Region == "TW" && r.GameVersion == build && r.Version == pluginVersion),
             "Login/session client identity was lost or plugin version changed.");
         using var unknownHttp = new HttpClient(handler, disposeHandler: false) { BaseAddress = http.BaseAddress };
         using var legacy = new CloudApiClient(unknownHttp);
         await legacy.ValidateSessionAsync("fixture-token", default);
         Check(handler.Reports[^1].Region == "TW" && handler.Reports[^1].GameVersion is null, "Missing game metadata blocked login or used a guessed build.");
-        Console.WriteLine("PASS cloud client identity: actual game-version file, unknown/malformed input, TW login/session headers and unchanged 0.4.5.7.");
+        Console.WriteLine($"PASS cloud client identity: actual game-version file, unknown/malformed input, TW login/session headers and unchanged {pluginVersion}.");
     }
 
     private static void Check(bool condition, string message)

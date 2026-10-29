@@ -30,7 +30,7 @@ cd DalamudActCompat-TW
 
 指令碼驗證引用雜湊、構建完整解決方案、執行離線 smoke，並生成 `artifacts/taiwan/DalamudActCompat-TW-candidate.zip` 與 SHA-256。API 13 模組和 Host 均面向 .NET 9；打包工具版本不代表遊戲執行時 API。
 
-台服獨立訂閱已提供 **0.4.5.7 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
+台服獨立訂閱已提供 **0.4.5.15 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
 
 ```text
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
