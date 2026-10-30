@@ -2,7 +2,7 @@
 
 原始碼與候選構建位於 [DalamudActCompat-TW](https://github.com/JackyWilliam/DalamudActCompat-TW)。
 
-`pluginmaster.json` 提供 **0.4.5.15 台服測試候選版**，安裝和更新均使用本倉庫的台服 Release 資產。將下列網址加入台服 Dalamud 的自訂插件儲存庫：
+`pluginmaster.json` 提供 **0.4.5.16 台服測試候選版**，安裝和更新均使用本倉庫的台服 Release 資產。將下列網址加入台服 Dalamud 的自訂插件儲存庫：
 
 ```text
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
