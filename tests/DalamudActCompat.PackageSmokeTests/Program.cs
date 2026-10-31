@@ -63,6 +63,11 @@ Directory.CreateDirectory(testRoot);
 
 try
 {
+    if (args.Contains("--postnamazu-command-only", StringComparer.Ordinal))
+    {
+        PostNamazuCommandSmokeTests.Run();
+        return 0;
+    }
     if (args.Length == 2 && args[0] == "--help-screenshots")
     {
         HelpScreenshotGenerator.Run(args[1]);
@@ -97,7 +102,7 @@ try
     {
         UiLanguageSmokeTests.Run();
         OverlayManagerSmokeTests.Acceptance();
-        EncounterWindowAcceptance.Run();
+        EncounterWindowAcceptance.Run(nativeLibraryLoaded: true);
         return 0;
     }
     if (args.Contains("--history-acceptance-only", StringComparer.Ordinal))
@@ -271,6 +276,7 @@ try
     ValidateActPluginDataCompatibility();
     ValidateActCustomTriggerCompatibility();
     ValidateSynchronousActInvocation();
+    PostNamazuCommandSmokeTests.Run();
     ValidatePostNamazuRawLogCompatibility();
     ValidateExternalPluginLogLineFormat();
     ValidatePostNamazuOverlayHandlerResponse();

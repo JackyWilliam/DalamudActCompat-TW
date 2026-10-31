@@ -41,9 +41,9 @@ In the Taiwan client, open `/xlsettings` and add this URL under Experimental →
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
 ```
 
-Open `/xlplugins`, refresh, and install **Dalamud ACT Compat (TW)**. The same URL supplies future updates. It currently serves the **0.4.5.16 test candidate**, defaults to Traditional Chinese, and excludes Matcha. Taiwan in-game acceptance is still pending.
+Open `/xlplugins`, refresh, and install **Dalamud ACT Compat (TW)**. The same URL supplies future updates. It currently serves the **0.4.5.18 test candidate**, defaults to Traditional Chinese, and excludes Matcha. Taiwan in-game acceptance is still pending.
 
-The full package is also available from [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.16), or build it with `tools/build-taiwan.ps1`. This repository requires the pinned Taiwan API 13 client; do not mix it with the CN repository.
+The full package is also available from [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.18), or build it with `tools/build-taiwan.ps1`. This repository requires the pinned Taiwan API 13 client; do not mix it with the CN repository.
 
 See [Taiwan build notes](docs/taiwan-build.md) before testing. Do not use the historical CN repair utility for this build.
 
