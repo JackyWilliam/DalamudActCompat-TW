@@ -97,7 +97,7 @@ try
     {
         UiLanguageSmokeTests.Run();
         OverlayManagerSmokeTests.Acceptance();
-        EncounterWindowAcceptance.Run();
+        EncounterWindowAcceptance.Run(nativeLibraryLoaded: true);
         return 0;
     }
     if (args.Contains("--history-acceptance-only", StringComparer.Ordinal))
