@@ -19,7 +19,7 @@ try {
         $manifest.MinimumDalamudVersion -ne '13.0.0.16') {
         throw 'Only the pinned Taiwan API 13 package can enter this repository.'
     }
-    if ($archive.Entries.Where({ $_.FullName -match '(?i)(^|/)matcha/' }).Count) {
+    if ($archive.Entries.Where({ $_.FullName.Replace('\', '/') -match '(?i)(^|/)matcha/' }).Count) {
         throw 'Matcha is excluded from the Taiwan distribution.'
     }
     $version = [version]$manifest.AssemblyVersion

@@ -34,7 +34,8 @@ if ($PrepareOnly) { Write-Output $refs; return }
 
 Push-Location $root
 try {
-    & dotnet build DalamudActCompat.slnx -c Release "-p:DalamudLibPath=$refs" -p:ShouldUnsetParentConfigurationAndPlatform=false
+    # Release artifacts must not retain local source/PDB paths in nested vendor builds.
+    & dotnet build DalamudActCompat.slnx -c Release "-p:DalamudLibPath=$refs" -p:ShouldUnsetParentConfigurationAndPlatform=false -p:DebugType=none -p:DebugSymbols=false
     if ($LASTEXITCODE -ne 0) { throw 'Taiwan solution build failed.' }
     $tfm = 'net9.0-windows10.0.17763.0'
     if (-not $SkipTests) {
@@ -56,6 +57,49 @@ try {
     New-Item -ItemType Directory -Path $out -Force | Out-Null
     $package = Join-Path $out 'DalamudActCompat-TW-candidate.zip'
     Copy-Item -LiteralPath 'src/DalamudActCompat/bin/Release/DalamudActCompat/latest.zip' -Destination $package -Force
+    # TW keeps its self-contained API 13 package. Audit the actual ZIP against this
+    # build and its pinned resources so a fresh main DLL cannot hide a stale Host.
+    $archive = [IO.Compression.ZipFile]::OpenRead($package)
+    try {
+        $groups = [ordered]@{}
+        foreach ($group in @('host', 'BundledCactbot', 'BundledActPlugins')) {
+            $files = @($archive.Entries | Where-Object { $_.FullName.Replace('\', '/').StartsWith("$group/") -and $_.Name } | Sort-Object FullName)
+            if ($files.Count -eq 0) { throw "Taiwan package is missing resource group: $group" }
+            $records = @()
+            foreach ($entry in $files) {
+                $relative = $entry.FullName.Replace('\', '/').Substring($group.Length + 1)
+                if ($group -eq 'host') {
+                    $source = "src/DalamudActCompat.Host/bin/Release/$tfm/$relative"
+                    if ($relative -eq 'System.Speech.dll') {
+                        $source = "src/DalamudActCompat.Host/bin/Release/$tfm/runtimes/win/lib/net9.0/System.Speech.dll"
+                    }
+                } else { $source = "vendor/$group/$relative" }
+                $stream = $entry.Open()
+                try { $entryHash = (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash.ToLowerInvariant() }
+                finally { $stream.Dispose() }
+                if (-not (Test-Path -LiteralPath $source) -or (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $entryHash) {
+                    throw "Taiwan packaged resource differs from current build/source: $($entry.FullName)"
+                }
+                $records += [ordered]@{ path = $relative; size = $entry.Length; sha256 = $entryHash }
+            }
+            $content = ($records | ForEach-Object { "$($_.path)`t$($_.sha256)`n" }) -join ''
+            $algorithm = [Security.Cryptography.SHA256]::Create()
+            try { $contentHash = [Convert]::ToHexString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($content))).ToLowerInvariant() }
+            finally { $algorithm.Dispose() }
+            $groups[$group] = [ordered]@{ contentSha256 = $contentHash; files = $records }
+        }
+        $names = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\', '/') })
+        if ($names -notcontains 'host/DalamudActCompat.Host.dll' -or
+            $names -notcontains 'host/DalamudActCompat.Host.exe') { throw 'Taiwan Host assembly is missing.' }
+        if ($names.Where({ $_ -match '(?i)(^|/)matcha/' }).Count) { throw 'Taiwan package includes Matcha.' }
+        $reader = [IO.StreamReader]::new($archive.GetEntry('DalamudActCompat.json').Open())
+        try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
+        if ($manifest.DalamudApiLevel -ne 13 -or $manifest.RepoUrl -ne 'https://github.com/JackyWilliam/DalamudActCompat-TW') {
+            throw 'Taiwan package identity mismatch.'
+        }
+        $audit = [ordered]@{ schemaVersion = 1; version = $manifest.AssemblyVersion; dalamudApiLevel = 13; resources = $groups }
+        $audit | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $out 'resource-content-hashes.json') -Encoding utf8
+    } finally { $archive.Dispose() }
     $hash = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $([IO.Path]::GetFileName($package))" | Set-Content -LiteralPath "$package.sha256" -Encoding ascii
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'taiwan-dependencies.lock.json') -Destination $out -Force
