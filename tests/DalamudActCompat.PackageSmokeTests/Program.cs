@@ -63,6 +63,11 @@ Directory.CreateDirectory(testRoot);
 
 try
 {
+    if (args.Contains("--postnamazu-command-only", StringComparer.Ordinal))
+    {
+        PostNamazuCommandSmokeTests.Run();
+        return 0;
+    }
     if (args.Length == 2 && args[0] == "--help-screenshots")
     {
         HelpScreenshotGenerator.Run(args[1]);
@@ -271,6 +276,7 @@ try
     ValidateActPluginDataCompatibility();
     ValidateActCustomTriggerCompatibility();
     ValidateSynchronousActInvocation();
+    PostNamazuCommandSmokeTests.Run();
     ValidatePostNamazuRawLogCompatibility();
     ValidateExternalPluginLogLineFormat();
     ValidatePostNamazuOverlayHandlerResponse();
