@@ -21,6 +21,9 @@ internal static partial class OverlayManagerSmokeTests
         var output = Environment.GetEnvironmentVariable("DACT_NATIVE_UI_OUTPUT")!;
         Directory.CreateDirectory(output);
         var results = new List<object>(); var failures = new List<string>();
+        // Ultimate skins otherwise resolve to the default palette and would only repeat it.
+        var previousUltimateUnlock = SkinCatalog.UltimateUnlocked;
+        SkinCatalog.UltimateUnlocked = () => true;
         try
         {
             var io = ImGui.GetIO(); io.IniFilename = null; io.LogFilename = null; io.DeltaTime = 1f / 60;
@@ -144,6 +147,7 @@ internal static partial class OverlayManagerSmokeTests
         {
             File.WriteAllText(Path.Combine(output, "matrix.json"), JsonSerializer.Serialize(new { cases = results.Count, failures, results }, new JsonSerializerOptions { WriteIndented = true }));
             DactTheme.SetCurrent(new(), false, 0); ImGui.DestroyContext(context);
+            SkinCatalog.UltimateUnlocked = previousUltimateUnlock;
         }
         Check(failures.Count == 0, $"UI acceptance found {failures.Count} layout violations; see matrix.json.");
         Console.WriteLine($"PASS UI acceptance: {results.Count} native skin/language/layout/page combinations.");

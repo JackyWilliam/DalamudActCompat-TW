@@ -487,7 +487,6 @@ public sealed class Plugin : IDalamudPlugin
             encounterModeStateProvider.Read,
             () => configuration.EmbeddedPlugins.FfxivActPluginEnabled,
             () => configuration.EmbeddedPlugins.OverlayPluginEnabled,
-            DiscoverRuntimePlugins,
             fflogsEstimateService.CaptureAvailableEstimates,
             () => new(configuration.EncounterResetMode, configuration.EncounterResetSeconds));
         parserEngine = new ParserEngine(parserAdapter);
@@ -5718,9 +5717,6 @@ public sealed class Plugin : IDalamudPlugin
                 "PostNamazu commands must begin with '/'.");
         }
     }
-
-    private IReadOnlyList<RuntimePluginSpec> DiscoverRuntimePlugins()
-        => [];
 
     private static IReadOnlyList<ActPlayerIdentity> BuildPlayerIdentities(
         IPlayerState playerState,
