@@ -12,18 +12,18 @@
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
 ```
 
-目前訂閱提供 **0.4.5.16 測試候選版**，預設繁體中文，對應台服 API 13 與遊戲版本 `2026.09.14.0000.0000`。遊戲內相容性仍待驗收；不包含 Matcha。安裝前請先備份原有設定，勿同時載入國服與台服版本。
+目前訂閱提供 **0.4.5.18 測試候選版**，預設繁體中文，對應台服 API 13 與遊戲版本 `2026.09.14.0000.0000`。遊戲內相容性仍待驗收；不包含 Matcha。安裝前請先備份原有設定，勿同時載入國服與台服版本。
 
 插件版本與遊戲版本分開處理：登入服務端時，台服用戶端會回報 `TW`、插件版本及正在執行的遊戲目錄內 `ffxivgame.ver` 的版本。讀取不到遊戲版本時不會猜測，也不會阻止登入。管理後台顯示最近一次有效回報；舊用戶端未提供的區域或遊戲版本顯示為「未上報」。
 
 ## 維護訂閱
 
 1. 等待 Taiwan Build 完整驗證成功，下載該提交的候選產物，核對 SHA-256 與套件清單。
-2. 以套件實際版本建立 GitHub 預先發行版本（目前為 `v0.4.5.16`），上傳 `DalamudActCompat-TW-candidate.zip` 及校驗檔。
+2. 以套件實際版本建立 GitHub 預先發行版本（目前為 `v0.4.5.18`），上傳 `DalamudActCompat-TW-candidate.zip` 及校驗檔。
 3. 確認未登入使用者也能下載並通過校驗，再產生及提交訂閱清單：
 
 ```powershell
-./tools/update-taiwan-pluginmaster.ps1 -Package ./DalamudActCompat-TW-candidate.zip -ReleaseTag v0.4.5.16 -Changelog "本版更新說明"
+./tools/update-taiwan-pluginmaster.ps1 -Package ./DalamudActCompat-TW-candidate.zip -ReleaseTag v0.4.5.18 -Changelog "本版更新說明"
 ```
 
 工具會拒絕非台服套件、不同 API／遊戲相容版本、含 Matcha 的套件，以及與套件版本不一致的標籤。更新時須先提高實際插件版本，不能以虛構的訂閱版本代替。訂閱格式參見 [Dalamud 自訂倉庫文件](https://dalamud.dev/plugin-publishing/custom-repositories/)。
