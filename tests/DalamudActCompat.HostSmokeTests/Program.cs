@@ -1111,6 +1111,13 @@ void ValidateTriggernometryAssemblyRewrite(string assemblyPath)
     var loadContext = new AssemblyLoadContext(
         $"Triggernometry patch smoke {Guid.NewGuid():N}",
         isCollectible: true);
+    // Mirror the Host's resolver, which binds by simple name: TN 2.4.1.1 references
+    // System.Text.Json 9.0.0.9, newer than the copy in the .NET 9 framework.
+    loadContext.Resolving += (_, name) =>
+    {
+        try { return AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName(name.Name!)); }
+        catch (FileNotFoundException) { return null; }
+    };
     try
     {
         _ = LegacyAssemblyRewriter.LoadTriggernometry(assemblyPath, loadContext);
@@ -3957,10 +3964,11 @@ void ValidateTriggernometryLaunchProcessPatch()
         called.Name == nameof(Process.Start) &&
         called.HasThis &&
         called.Parameters.Count == 0);
+    // TN 2.4 starts the process inside `using`, so the guard leaves that try block.
     var hasNullGuard = launchMethod.Body.Instructions.Any(instruction =>
         instruction.OpCode.Code is Code.Brfalse or Code.Brfalse_S &&
         instruction.Operand is Instruction target &&
-        target.OpCode.Code == Code.Ret);
+        target.OpCode.Code is Code.Ret or Code.Leave or Code.Leave_S);
     Assert(
         bridgeCalls == 1 && legacyInstanceStarts == 0 && hasNullGuard,
         "Triggernometry LaunchProcess did not route its instance Start path through " +
