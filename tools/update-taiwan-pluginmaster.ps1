@@ -26,6 +26,9 @@ try {
     if ($ReleaseTag -ne "v$version") {
         throw 'Release tag and package assembly version disagree.'
     }
+    if ([string]::IsNullOrWhiteSpace($manifest.IconUrl)) {
+        throw 'Taiwan package manifest has no IconUrl.'
+    }
 } finally { $archive.Dispose() }
 
 # Use the real assembly version so installed candidates compare correctly on
@@ -51,7 +54,8 @@ $feed = [ordered]@{
     LastUpdate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     Changelog = $Changelog
     CanUnloadAsync = $manifest.CanUnloadAsync
-    IconUrl = 'https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/Assets/act-logo.jpg'
+    # Installed copies keep the packaged manifest, so the feed reuses its icon.
+    IconUrl = $manifest.IconUrl
 }
 # Emit exactly one Taiwan entry; historical CN metadata and its repair utility
 # remain reference-only and must never become install/update targets here.

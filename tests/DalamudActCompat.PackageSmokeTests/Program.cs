@@ -1933,9 +1933,24 @@ static void ValidatePluginRepositoryMetadata()
            "https://github.com/JackyWilliam/DalamudActCompat-TW",
         "Taiwan package source link points at the previous repository.");
     var entry = document.RootElement[0];
-    foreach (var property in new[] { "InternalName", "AssemblyVersion", "RepoUrl", "DalamudApiLevel", "ApplicableVersion", "MinimumDalamudVersion" })
+    foreach (var property in new[] { "InternalName", "AssemblyVersion", "RepoUrl", "DalamudApiLevel", "ApplicableVersion", "MinimumDalamudVersion", "IconUrl" })
         Assert(entry.GetProperty(property).ToString() == manifest.RootElement.GetProperty(property).ToString(),
             $"Taiwan subscription {property} differs from the packaged manifest.");
+    Assert(entry.GetProperty("IconUrl").GetString() ==
+           "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/images/icon.png",
+        "Taiwan IconUrl must point at the icon published from this repository.");
+    var iconPath = Path.Combine(projectRoot, "src", "DalamudActCompat", "images", "icon.png");
+    var icon = File.Exists(iconPath) ? File.ReadAllBytes(iconPath) : [];
+    // Check the PNG header rather than the extension; Dalamud rejects icons over 512x512.
+    byte[] pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    var iconWidth = icon.Length >= 24
+        ? System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(16, 4))
+        : 0;
+    var iconHeight = icon.Length >= 24
+        ? System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(20, 4))
+        : 0;
+    Assert(icon.AsSpan().StartsWith(pngSignature) && iconWidth == iconHeight && iconWidth is > 0 and <= 512,
+        "The Taiwan IconUrl target must be a square PNG no larger than 512x512.");
     var version = manifest.RootElement.GetProperty("AssemblyVersion").GetString();
     var download = $"https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v{version}/DalamudActCompat-TW-candidate.zip";
     foreach (var property in new[] { "DownloadLinkInstall", "DownloadLinkUpdate", "DownloadLinkTesting" })
