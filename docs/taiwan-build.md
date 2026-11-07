@@ -36,7 +36,7 @@ cd DalamudActCompat-TW
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
 ```
 
-在 `/xlsettings` 的自訂插件儲存庫加入並儲存後，使用 `/xlplugins` 安裝 **Dalamud ACT Compat (TW)**。此訂閱可直接安裝候選版，並不表示遊戲內驗收已完成；正式穩定版仍待驗收。歷史國服版本修復工具不會從台服倉庫分發，它的內建 API 15 修復包不適用於台服。分發步驟見[台服訂閱說明](CUSTOM_REPOSITORY.md)。
+在 `/xlsettings` 的自訂插件儲存庫加入並儲存後，使用 `/xlplugins` 安裝 **DACT (TW)**。此訂閱可直接安裝候選版，並不表示遊戲內驗收已完成；正式穩定版仍待驗收。歷史國服版本修復工具不會從台服倉庫分發，它的內建 API 15 修復包不適用於台服。分發步驟見[台服訂閱說明](CUSTOM_REPOSITORY.md)。
 
 ## 驗證邊界
 

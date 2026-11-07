@@ -5,7 +5,7 @@
     <RootNamespace>DalamudActCompat</RootNamespace>
     <Version>0.4.5.20</Version>
     <AssemblyVersion>0.4.5.20</AssemblyVersion>
-    <Name>Dalamud ACT Compat (TW)</Name>
+    <Name>DACT (TW)</Name>
     <Author>raynording</Author>
     <Punchline>In-game ACT-compatible parsing platform foundation.</Punchline>
     <Description>Dalamud-side UI, storage, parser abstraction, and compatibility-host bridge for an ACT-compatible FFXIV parsing platform.</Description>
