@@ -36,7 +36,7 @@ try {
 $download = "$repository/releases/download/$ReleaseTag/DalamudActCompat-TW-candidate.zip"
 $feed = [ordered]@{
     Author = $manifest.Author
-    Name = 'Dalamud ACT Compat (TW)'
+    Name = 'DACT (TW)'
     InternalName = $manifest.InternalName
     AssemblyVersion = $version.ToString()
     TestingAssemblyVersion = $null

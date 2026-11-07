@@ -6,7 +6,7 @@
 
 ## 安裝
 
-在 Dalamud 的 `/xlsettings` → 實驗性功能 → 自訂插件倉庫中加入以下網址，儲存後開啟 `/xlplugins` 重新整理並安裝 **Dalamud ACT Compat (TW)**：
+在 Dalamud 的 `/xlsettings` → 實驗性功能 → 自訂插件倉庫中加入以下網址，儲存後開啟 `/xlplugins` 重新整理並安裝 **DACT (TW)**：
 
 ```text
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
