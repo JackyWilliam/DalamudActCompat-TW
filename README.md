@@ -1,4 +1,4 @@
-# Dalamud ACT Compat (TW)
+# DACT (TW)
 
 > 本倉庫為台服 API 13 / .NET 9 獨立候選構建，未包含 Matcha，尚待台服遊戲內驗收。依賴鎖定及驗證範圍見[台服構建說明](docs/taiwan-build.md)。
 
@@ -20,14 +20,18 @@ Dalamud ACT Compat（簡稱 DACT）把 `FFXIV_ACT_Plugin`、`OverlayPlugin` 和�
 
 | 功能 | 實際用途 |
 | --- | --- |
+| 1.0 控制中心 | 頂欄全域搜尋（Ctrl+Shift+K）、雲端同步狀態、回饋與說明；左側導覽直達首頁、戰鬥統計、戰鬥記錄、懸浮窗、擴充套件、好友、AI 助手、帳號與雲同步、設定 |
+| 皮膚 | 每款皮膚都有自己的控制項、下拉選單與浮層樣式，可先預覽再套用；艾歐澤亞使用遊戲視窗的金屬邊框 |
 | 遊戲內戰鬥統計 | 檢視 4/8/24 人 DPS、rDPS、HPS、總傷害、最高傷害、命中率、死亡和本地 FFLogs 區間估算 |
 | 統計樣式 | 經典榜、橫版和職能分欄三選一；8 人經典表格可自定義，24 人使用固定的職業/名字 + DPS/HPS 緊湊條 |
-| 戰鬥歷史 | 按每次進本和每一把戰鬥儲存記錄，回看隊伍資料與原始日誌 |
+| 戰鬥記錄 | 按每次進本和每一把戰鬥儲存記錄，回看隊伍資料與原始日誌；「開荒進度」記錄每次打到哪裡和最常見的團滅點 |
 | Cactbot / HTML 懸浮窗 | 安裝 Cactbot 資源，在遊戲內建立、縮放、鎖定和穿透懸浮窗 |
 | 常見 ACT 擴充套件 | 使用 Triggernometry、PostNamazu、ACT.FoxTTS 和 SilverDasher |
 | 自行匯入擴充套件 | 對 DLL/ZIP 做靜態預檢，確認許可權後在通用 Host 中載入相容的 ACT 外掛 |
-| 帳號與雲同步 | 使用啟用碼註冊、可選自動登入、生成最多 3 個好友邀請碼，並端到端加密備份配置 |
-| 好友與聊天 | 新增好友、檢視線上狀態、收發訊息及離線來信；支援未讀提醒、來信氣泡、快捷回覆和四種提示音 |
+| 帳號與雲同步 | 使用啟用碼註冊、可選自動登入、生成最多 3 個好友邀請碼，並端到端加密備份配置；每個帳號最多同時登入 5 台電腦 |
+| 好友與聊天 | 好友頁與可單獨開啟的聊天視窗：線上狀態、收發訊息及離線來信；支援未讀提醒、來信氣泡、快捷回覆和四種提示音 |
+| AI 助手 | 診斷問題、複盤戰鬥、回答使用問題；預設關閉，使用你自己的 API Key，Key 只存在本機 |
+| 回饋 | 頂欄回饋按鈕提交問題或建議，可附截圖、診斷日誌與 AI 對話，回覆出現在好友「官方通知」 |
 | RPets 共用登入 | 與獨立安裝的 RPets 同步登入、切換帳號和退出狀態 |
 | 故障隔離與診斷 | 分開檢視解析器、共享 Host 和通用 Host，按元件停止或重啟 |
 
@@ -43,9 +47,9 @@ Dalamud ACT Compat（簡稱 DACT）把 `FFXIV_ACT_Plugin`、`OverlayPlugin` 和�
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
 ```
 
-接著輸入 `/xlplugins`，重新整理後搜尋 **DACT (TW)** 並安裝。此網址也用於後續更新；目前提供 **0.4.5.20 測試候選版**，預設繁體中文，不包含 Matcha，台服遊戲內驗收仍待完成。
+接著輸入 `/xlplugins`，重新整理後搜尋 **DACT (TW)** 並安裝。此網址也用於後續更新；目前提供 **1.0.0.0 測試候選版**，預設繁體中文，不包含 Matcha，台服遊戲內驗收仍待完成。
 
-也可從 [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.20) 取得完整候選包，或執行 `tools/build-taiwan.ps1` 自行構建。此訂閱僅適用於鎖定的台服 API 13 客戶端，不與國服訂閱混用。
+也可從 [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v1.0.0.0) 取得完整候選包，或執行 `tools/build-taiwan.ps1` 自行構建。此訂閱僅適用於鎖定的台服 API 13 客戶端，不與國服訂閱混用。
 
 測試前請閱讀[台服構建說明](docs/taiwan-build.md)。歷史國服版本修復工具不適用於此台服構建。
 
@@ -59,40 +63,51 @@ https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/plu
 
 1. 閱讀首次彈出的第三方擴充套件宣告，核對作者、來源、版本、許可權和 SHA-256，再決定是否安裝及授權。
 2. 輸入 `/actcompat` 開啟控制中心。
-3. 在“概覽”確認“啟用解析”和“自動啟動解析器”已開啟，頂部狀態為“執行中”。
+3. 在“首頁”確認“啟用解析”和“自動啟動解析器”已開啟，“解析器”顯示“執行中”。首次開啟 1.0 會有一段新版導覽，可隨時略過。
 4. 輸入 `/actcompat meter` 開啟戰鬥統計，對木人或副本敵人造成有效傷害後即可看到資料。
 5. 需要 Cactbot、Triggernometry、鯰魚精或其他擴充套件時，再到“懸浮窗”和“擴充套件”頁配置。
 
-控制中心右上角有完整的遊戲內幫助，支援中英文關鍵詞搜尋和宏指令複製。
+控制中心頂欄右側的問號是完整的遊戲內幫助，支援中英文關鍵詞搜尋和宏指令複製；頂欄搜尋框（預設 Ctrl+Shift+K，可在設定裡改鍵或關閉）會同時搜尋設定項、頁面和幫助。
 
-0.4.1.0 起，登入後點選主視窗雲狀態右側的好友圖示，即可查詢帳號、處理好友申請和開啟聊天。狀態彈窗可設定線上狀態及是否分享當前副本；來信提醒設定支援獨立開關氣泡和聲音、調整位置與背景透明度、選擇及試聽四種提示音。每對好友雙方合計保留最近 20 條歷史和最新 3 條離線待收訊息。這裡的好友申請與註冊用的邀請碼是兩個獨立功能。
+> **從 0.4.x 更新到 1.0 後需要重新登入一次。** 為了按電腦名稱記錄「最多 5 台裝置」，所有帳號已統一登出一次；設定、好友和雲端備份都不受影響。
+
+1.0 起，好友在控制中心左側導覽，可以查詢帳號、處理好友申請和開啟聊天，聊天也能拆成獨立視窗。狀態彈窗可設定線上狀態及是否分享當前副本；來信提醒設定支援獨立開關氣泡和聲音、調整位置與背景透明度、選擇及試聽四種提示音。每對好友雙方合計保留最近 20 條歷史和最新 3 條離線待收訊息。這裡的好友申請與註冊用的邀請碼是兩個獨立功能。
 
 > “開啟 FFLogs 上傳日誌”只會開啟本地 Network 日誌目錄並複製路徑，不會自動上傳。診斷日誌用於排錯，不能代替戰鬥日誌。
 
 ## 介面預覽
 
-![繁體中文控制中心概覽](docs/images/readme/tw-home.png)
+![繁體中文控制中心首頁](docs/images/readme/tw-home.png)
 
-| Cactbot 時間軸 | 自訂 HTML 懸浮窗 |
+| 全域搜尋 | 好友與聊天 |
 | --- | --- |
-| [![Cactbot 設定](docs/images/readme/tw-cactbot.png)](docs/images/readme/tw-cactbot.png) | [![懸浮窗一般設定](docs/images/readme/tw-general.png)](docs/images/readme/tw-general.png) |
-| **顯示／隱藏快捷鍵** | **來源與網址** |
-| [![快捷鍵設定](docs/images/readme/tw-hotkeys.png)](docs/images/readme/tw-hotkeys.png) | [![來源設定](docs/images/readme/tw-source.png)](docs/images/readme/tw-source.png) |
+| [![全域搜尋](docs/images/readme/tw-search.png)](docs/images/readme/tw-search.png) | [![好友](docs/images/readme/tw-friends.png)](docs/images/readme/tw-friends.png) |
+| **戰鬥記錄 · 開荒進度** | **AI 助手** |
+| [![開荒進度](docs/images/readme/tw-progression.png)](docs/images/readme/tw-progression.png) | [![AI 助手](docs/images/readme/tw-ai.png)](docs/images/readme/tw-ai.png) |
+| **戰鬥統計** | **Cactbot 與 HTML 懸浮窗** |
+| [![戰鬥統計](docs/images/readme/tw-meter.png)](docs/images/readme/tw-meter.png) | [![懸浮窗](docs/images/readme/tw-overlays.png)](docs/images/readme/tw-overlays.png) |
+| **擴充套件** | **設定** |
+| [![擴充套件](docs/images/readme/tw-extensions.png)](docs/images/readme/tw-extensions.png) | [![設定](docs/images/readme/tw-settings.png)](docs/images/readme/tw-settings.png) |
+| **執行狀態** | |
+| [![執行狀態](docs/images/readme/tw-status.png)](docs/images/readme/tw-status.png) | |
 
-> 圖片由台服候選版的實際介面繪製程式以繁體中文產生，使用離線測試資料，並非遊戲內實測截圖。範例中的自訂名稱會原樣保留，不隨介面語言轉換。點選小圖可檢視原圖。
+> 圖片為 v1.0.0.0 預設外觀「深海原色」，由台服候選版的實際介面繪製程式以繁體中文產生，使用外掛內建的範例戰鬥與範例帳號（範例資料本身為簡體），並非遊戲內實測截圖。點選小圖可檢視原圖。
 
 ## 控制中心
 
 | 頁面 | 這裡能做什麼 |
 | --- | --- |
-| 概覽 | 檢視解析器狀態；開關解析、自動啟動、失焦隱藏網頁懸浮窗和精簡模式；開啟統計、歷史、執行狀態與日誌目錄 |
-| 戰鬥統計 | 在三個互斥模板間切換；設定 8/24 人模式、DPS/HPS 排序、獨立統計槽位、透明度和 FFLogs 估算 |
+| 首頁 | 解析器、擴充套件、雲同步和好友的狀態卡片；快捷入口開啟統計、戰鬥記錄、執行狀態與日誌目錄；開關解析、自動啟動、失焦隱藏網頁懸浮窗和精簡模式 |
+| 戰鬥統計 | 在三個互斥模板間切換；設定 8/24 人模式、DPS/HPS 排序、透明度和 FFLogs 估算；在樣式編輯器的頁面預覽裡點選槽位直接調整 |
+| 戰鬥記錄 | 近期戰鬥、開荒進度與日誌檔案 |
 | 懸浮窗 | 安裝 Cactbot；管理文字提醒、時間軸和自定義 HTML 懸浮窗；設定遊戲失焦時隱藏網頁懸浮窗 |
 | 擴充套件 | 啟停擴充套件；開啟擴充套件配置；檢查來源與更新；匯入 DLL/ZIP；分配許可權 |
-| 雲同步 | 註冊或登入帳號；選擇是否自動登入；管理好友邀請碼；上傳、預覽、恢復或回滾端到端加密配置 |
-| 設定 | 檢視固定的台服區域；重啟解析器；複製診斷；設定語言和快捷按鈕；執行需再次確認的恢復出廠設定 |
+| 好友 | 好友列表、申請與新增；聊天與來信提醒設定 |
+| AI 助手 | 診斷問題、戰鬥複盤、使用問答與 AI 設定（服務商、API Key、模型） |
+| 帳號與雲同步 | 註冊或登入帳號；選擇是否自動登入；管理好友邀請碼；上傳、預覽、恢復或回滾端到端加密配置 |
+| 設定 | 外觀與皮膚、場景方案；全域搜尋快捷鍵；重啟解析器；複製診斷；設定語言和快捷按鈕；執行需再次確認的恢復出廠設定 |
 
-解析區域固定為台服，匯入舊配置也不會切換底層協議；客戶端語言仍獨立保留。FFLogs 區間估算使用 M5–M8 地圖表及 TW 查詢範圍，缺少台服資料時不會借用國服或全球快取分數。
+首頁的“遊戲區域”固定為台服，匯入舊配置也不會切換底層協議；客戶端語言仍獨立保留。FFLogs 區間估算使用 M5–M8 地圖表及 TW 查詢範圍，缺少台服資料時不會借用國服或全球快取分數。
 
 ## 常用命令
 
@@ -143,12 +158,12 @@ https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/plu
 
 ### `/actcompat` 沒反應或提示命令不存在
 
-在 `/xlplugins` 中確認 Dalamud ACT Compat 已安裝、已啟用且沒有載入錯誤。此時外掛內的重啟和診斷按鈕也無法工作，先處理 Dalamud 顯示的載入錯誤。
+在 `/xlplugins` 中確認 DACT (TW) 已安裝、已啟用且沒有載入錯誤。此時外掛內的重啟和診斷按鈕也無法工作，先處理 Dalamud 顯示的載入錯誤。
 
 ### 戰鬥統計視窗不見了或一直為空
 
 1. 輸入 `/actcompat meter`，並暫時關閉“脫戰自動隱藏”。
-2. 確認“概覽”和 `/actcompat status` 中的解析器都是“執行中”。
+2. 確認“首頁”和 `/actcompat status` 中的解析器都是“執行中”。
 3. 對木人或副本敵人實際造成幾次有效傷害；僅進本、選中目標或開啟視窗不會產生資料。
 4. 仍為空時重啟解析器，並重新產生一場新樣本。
 
@@ -162,15 +177,15 @@ https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/plu
 
 ### 反饋問題需要什麼
 
-請提供 DACT 版本、發生時間、復現步驟、預期結果、實際現象、`/actcompat status` 中第一個失敗的元件和“複製診斷日誌”的完整內容。統計缺失或數值異常還需保留對應的 `Network_*.log`。提交前請自行檢查角色名、伺服器名和本地路徑。
+最方便的是點控制中心頂欄的回饋按鈕：可以附截圖、診斷日誌和 AI 對話，回覆會出現在好友「官方通知」。在 Issue 中回饋時，請提供 DACT 版本、發生時間、復現步驟、預期結果、實際現象、`/actcompat status` 中第一個失敗的元件和“複製診斷日誌”的完整內容。統計缺失或數值異常還需保留對應的 `Network_*.log`。提交前請自行檢查角色名、伺服器名和本地路徑。
 
 ## 它是怎麼執行的
 
 ```text
 FFXIV / Dalamud 程序
-└─ Dalamud ACT Compat
+└─ DACT (TW)
    ├─ FFXIV_ACT_Plugin + OverlayPlugin
-   ├─ 控制中心、戰鬥統計、歷史與懸浮窗
+   ├─ 控制中心、戰鬥統計、戰鬥記錄與懸浮窗
    ├─ 帳號、邀請和本機加密的雲配置同步
    └─ 有界 IPC
       ├─ 共享 Host：Triggernometry / PostNamazu / FoxTTS / SilverDasher

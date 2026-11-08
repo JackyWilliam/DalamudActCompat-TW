@@ -42,6 +42,14 @@ internal static partial class OverlayManagerSmokeTests
             Set(f.Window, "isStatusVisible", (Func<bool>)(() => true));
             Set(f.Window, "getGameRegionSelection", (Func<GameRegionSelection>)(() => GameRegionResolver.Resolve(GameRegionMode.Auto, "Chinese", 4)));
             Set(f.Window, "setGameRegionMode", (Action<GameRegionMode>)(_ => { }));
+            // The 1.0 home page shows extension, cloud and quick-action tiles beside the general settings.
+            Set(f.Window, "discoverPlugins", (Func<IReadOnlyList<DalamudActCompat.Compatibility.PluginHost.InstalledActPlugin>>)(() => []));
+            Set(f.Window, "cloud", new DalamudActCompat.Infrastructure.Cloud.CloudUiBridge(
+                () => DalamudActCompat.Infrastructure.Cloud.CloudClientSnapshot.SignedOut(), _ => { }, _ => { }, _ => { }, () => { }, () => { },
+                _ => { }, () => { }, _ => { }, _ => { }, () => { }));
+            Set(f.Window, "setStatusVisible", (Action<bool>)(_ => { }));
+            Set(f.Window, "setMeterVisible", (Action<bool>)(_ => { }));
+            Set(f.Window, "setSimplifiedMode", (Action<bool>)(_ => { }));
             var draw = typeof(ControlCenterWindow).GetMethod("DrawOverlays", Private)!;
             var home = typeof(ControlCenterWindow).GetMethod("DrawOverview", Private)!;
             var details = typeof(ControlCenterWindow).GetField("overlayDetailsPage", Private)!;
@@ -59,6 +67,12 @@ internal static partial class OverlayManagerSmokeTests
                     ImGui.SetNextWindowPos(new(20)); ImGui.SetNextWindowSize(size);
                     ImGui.PushStyleColor(ImGuiCol.WindowBg, DactTheme.Palette.Surface);
                     ImGui.Begin("UI acceptance", DactTheme.WindowFlags(ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoSavedSettings));
+                    // Like ControlCenterWindow.Draw: the 1.0 kit derives its layout scale from the font size.
+                    DalamudActCompat.UI.Kit.DactUi.BeginFrame();
+                    // Like ControlCenterWindow.Shell: 1.0 dialogs size and centre on the DACT window.
+                    // Without it they fall back to their widest size and the screen centre.
+                    DalamudActCompat.UI.Kit.DactUi.HostMin = ImGui.GetWindowPos();
+                    DalamudActCompat.UI.Kit.DactUi.HostMax = ImGui.GetWindowPos() + ImGui.GetWindowSize();
                     DactTheme.DrawGameWindow();
                     // Stacked details can start below the viewport. Scroll the
                     // parent to them so native clipping cannot silently skip the page.
@@ -109,7 +123,9 @@ internal static partial class OverlayManagerSmokeTests
                             if (name.Contains("/overlay-details_") && !window.SkipItems && window.ContentSize.Y > 100) detailsDrawn = true;
                             if (!name.StartsWith("UI acceptance") && !name.Contains("dact-add-overlay")) continue;
                             var available = window.Size.X - window.WindowPadding.X * 2 - window.ScrollbarSizes.X;
-                            if (window.ContentSize.X > available + 2)
+                            // A child scrolled out of view is not laid out this frame (SkipItems), so its
+                            // ContentSize is stale; the scenario that scrolls it into view measures it.
+                            if (!window.SkipItems && window.ContentSize.X > available + 2)
                                 errors.Add($"Horizontal overflow {name}: {window.ContentSize.X:0.0} > {available:0.0}");
                             if ((window.Flags & ImGuiWindowFlags.NoScrollbar) != 0 && name.Contains("overview-") &&
                                 window.ContentSize.Y > window.Size.Y - window.WindowPadding.Y * 2 + 2)
@@ -129,10 +145,14 @@ internal static partial class OverlayManagerSmokeTests
                         {
                             Check(context.OpenPopupStack.Size == 1, "Actual add dialog was not opened.");
                             var popup = new ImGuiWindowPtr(context.OpenPopupStack[0].Window);
-                            var cancel = popup.Pos + new Vector2(popup.WindowPadding.X + 20,
-                                popup.Size.Y - popup.WindowPadding.Y - ImGui.GetFrameHeight() * .5f);
+                            // 1.0: 取消 is the bottom-right 30 px button, and the dialog fades out over
+                            // DialogCloseSeconds before ImGui closes the popup.
+                            var s = DalamudActCompat.UI.Kit.DactUi.S;
+                            var cancel = popup.Pos + new Vector2(popup.Size.X - popup.WindowPadding.X - 20 * s,
+                                popup.Size.Y - popup.WindowPadding.Y - 15 * s);
                             io.AddMousePosEvent(cancel.X, cancel.Y); Frame();
                             io.AddMouseButtonEvent(0, true); Frame(); io.AddMouseButtonEvent(0, false); Frame();
+                            for (var fade = 0; fade < 30 && context.OpenPopupStack.Size != 0; fade++) Frame();
                             if (context.OpenPopupStack.Size != 0) errors.Add("Native Cancel click did not close modal");
                             io.AddMousePosEvent(-100, -100);
                         }

@@ -56,7 +56,12 @@ internal static class DiagnosticReportBuilder
         DiagnosticReportSnapshot snapshot)
     {
         var report = new StringBuilder();
-        report.AppendLine("Dalamud ACT Compat diagnostic report");
+#if DACT_TAIWAN
+        // TW and CN share version numbers; the title is the only place a report says which build sent it.
+        report.AppendLine("DACT (TW) diagnostic report");
+#else
+        report.AppendLine("DACT diagnostic report");
+#endif
         report.AppendLine($"Generated: {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         report.AppendLine($"Plugin: {snapshot.PluginVersion}");
         report.AppendLine($"Dalamud: {snapshot.DalamudVersion}");

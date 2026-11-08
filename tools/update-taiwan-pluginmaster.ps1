@@ -38,6 +38,8 @@ $feed = [ordered]@{
     Author = $manifest.Author
     Name = 'DACT (TW)'
     InternalName = $manifest.InternalName
+    # Installers search tags as well as the name, so pre-1.0 names still find the plugin.
+    Tags = @($manifest.Tags | Where-Object { $_ })
     AssemblyVersion = $version.ToString()
     TestingAssemblyVersion = $null
     Description = '台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。'
