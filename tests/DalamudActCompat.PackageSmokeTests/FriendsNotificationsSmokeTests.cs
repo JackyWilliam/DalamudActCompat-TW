@@ -79,7 +79,10 @@ internal static partial class FriendsUiSmokeTests
     private static unsafe void NotificationFrames(Fake api, FriendsChatController controller, NativeUiRasterizer raster, string? output)
     {
         var io = ImGui.GetIO(); io.DisplaySize = new(1440, 1000); io.FontGlobalScale = 1; io.DeltaTime = 1f / 60;
-        var context = ImGui.GetCurrentContext(); var configuration = new PluginConfiguration(); long now = 10000; var sounds = 0;
+        var context = ImGui.GetCurrentContext();
+        // Click positions and sent wording are calibrated in Simplified Chinese; the Taiwan build
+        // would otherwise start in its Traditional default.
+        var configuration = new PluginConfiguration { UiLanguage = "zh-CN" }; long now = 10000; var sounds = 0;
         using var ui = new FriendsUiManager(controller, () => throw new Exception("Notification opened the main drawer."), configuration,
             () => now, () => sounds++, administratorIcon: new AdministratorSmokeTests.PreviewIcon(),
             sponsorIcon: new AdministratorSmokeTests.PreviewIcon(1000));

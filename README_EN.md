@@ -1,4 +1,4 @@
-# Dalamud ACT Compat (TW)
+# DACT (TW)
 
 > This repository is the independent Taiwan API 13 / .NET 9 candidate. Matcha is excluded. In-game Taiwan acceptance is pending. See [Taiwan build notes](docs/taiwan-build.md) for pinned dependencies and validation limits.
 
@@ -18,14 +18,18 @@ This checkout targets **Windows, Taiwan Dalamud API 13 and .NET 9**. It is an un
 
 | Feature | What it is for |
 | --- | --- |
+| 1.0 Control Center | Global search in the header (Ctrl+Shift+K), cloud status, feedback, and help; a sidebar for Home, Combat Meter, Encounter history, Overlays, Extensions, Friends, AI assistant, Account & cloud, and Settings |
+| Skins | Each skin has its own controls, dropdowns, and popups and can be previewed before applying; Eorzea uses the game's metal window frame |
 | In-game combat meter | View 4/8/24-player DPS, rDPS, HPS, total damage, highest-hit actions, hit rates, deaths, and a local FFLogs percentile estimate |
 | Meter styles | Choose one of Classic, Horizontal, or Role Split; customize ordered slots in Page preview while Horizontal remains background-free |
-| Encounter history | Store runs and individual pulls, then inspect party data and raw logs |
+| Encounter history | Store runs and individual pulls, then inspect party data and raw logs; Progression records how far each attempt got and the most common wipes |
 | Cactbot / HTML overlays | Install Cactbot resources and create, resize, lock, or click through in-game overlays |
 | Common ACT extensions | Use Triggernometry, PostNamazu, ACT.FoxTTS, and SilverDasher |
 | Imported extensions | Preflight DLL/ZIP packages and load compatible ACT plugins in a generic Host after permission review |
-| Accounts and cloud sync | Register with an activation key, optionally sign in automatically, create up to three friend invitations, and back up configuration with end-to-end encryption |
-| Friends and chat | Add friends, view presence, exchange messages and receive offline messages, with unread indicators, incoming bubbles, quick replies, and four notification sounds |
+| Accounts and cloud sync | Register with an activation key, optionally sign in automatically, create up to three friend invitations, and back up configuration with end-to-end encryption; each account can be signed in on up to five PCs |
+| Friends and chat | A Friends page and chat windows you can pop out: presence, messages and offline messages, with unread indicators, incoming bubbles, quick replies, and four notification sounds |
+| AI assistant | Diagnose problems, review encounters, and answer usage questions; off by default, uses your own API key, which stays on your PC |
+| Feedback | Send problems or suggestions from the header with screenshots, diagnostics, and AI conversations; replies arrive in Friends · DACT announcements |
 | Shared RPets sign-in | Synchronize sign-in, account switching, and sign-out with the separately installed RPets plugin |
 | Isolation and diagnostics | Inspect the parser, shared Host and generic Host separately, then stop or restart only the failing component |
 
@@ -41,9 +45,9 @@ In the Taiwan client, open `/xlsettings` and add this URL under Experimental →
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
 ```
 
-Open `/xlplugins`, refresh, and install **DACT (TW)**. The same URL supplies future updates. It currently serves the **0.4.5.20 test candidate**, defaults to Traditional Chinese, and excludes Matcha. Taiwan in-game acceptance is still pending.
+Open `/xlplugins`, refresh, and install **DACT (TW)**. The same URL supplies future updates. It currently serves the **1.0.0.0 test candidate**, defaults to Traditional Chinese, and excludes Matcha. Taiwan in-game acceptance is still pending.
 
-The full package is also available from [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v0.4.5.20), or build it with `tools/build-taiwan.ps1`. This repository requires the pinned Taiwan API 13 client; do not mix it with the CN repository.
+The full package is also available from [GitHub Release](https://github.com/JackyWilliam/DalamudActCompat-TW/releases/tag/v1.0.0.0), or build it with `tools/build-taiwan.ps1`. This repository requires the pinned Taiwan API 13 client; do not mix it with the CN repository.
 
 See [Taiwan build notes](docs/taiwan-build.md) before testing. Do not use the historical CN repair utility for this build.
 
@@ -57,40 +61,51 @@ Registering a DACT account requires a one-time activation key. Join QQ group **1
 
 1. Read the third-party extension notice. Check each author, source, version, permission set, and SHA-256 before deciding whether to install and authorize it.
 2. Enter `/actcompat` to open the Control Center.
-3. On Overview, keep Enable parsing and Start parser automatically enabled. Confirm the status at the top is Running.
+3. On Home, keep Enable parsing and Start parser automatically enabled, and confirm the parser shows Running. The first time 1.0 opens, a short what's-new tour appears; you can skip it at any time.
 4. Enter `/actcompat meter`, then deal valid damage to a striking dummy or duty enemy to populate the meter.
 5. Configure Cactbot, Triggernometry, PostNamazu, or other optional extensions from the Overlays and Extensions pages only when needed.
 
-The help button in the top-right corner opens the complete in-game guide. It supports Chinese and English keyword search and lets you copy commands.
+The question-mark button in the header opens the complete in-game guide. It supports Chinese and English keyword search and lets you copy commands. The header search field (Ctrl+Shift+K by default; rebind or turn it off in Settings) searches settings, pages, and help together.
 
-Starting with 0.4.1.0, sign in and select the friends icon beside the cloud status to find accounts, handle friend requests, and open chats. The status popup controls presence and optional duty sharing. Notification settings provide independent bubble and sound switches, position and background opacity controls, and four sounds with previews. Each pair of friends retains the latest 20 history messages and latest three pending offline messages across both participants. Friend requests are separate from registration invitation codes.
+> **Updating from 0.4.x to 1.0 requires signing in once more.** To record the five-device limit by PC name, every account has been signed out once. Configuration, friends, and cloud backups are unaffected.
+
+Starting with 1.0, Friends lives in the Control Center sidebar: find accounts, handle friend requests, and open chats, which can also be popped out into their own windows. The status popup controls presence and optional duty sharing. Notification settings provide independent bubble and sound switches, position and background opacity controls, and four sounds with previews. Each pair of friends retains the latest 20 history messages and latest three pending offline messages across both participants. Friend requests are separate from registration invitation codes.
 
 > Open FFLogs upload logs only opens the local Network log directory and copies its path. It does not upload automatically. Diagnostic logs are for troubleshooting and do not replace combat logs.
 
 ## UI preview
 
-![Traditional Chinese control-center overview](docs/images/readme/tw-home.png)
+![Traditional Chinese Control Center home](docs/images/readme/tw-home.png)
 
-| Cactbot timeline | Custom HTML overlay |
+| Global search | Friends and chat |
 | --- | --- |
-| [![Cactbot settings](docs/images/readme/tw-cactbot.png)](docs/images/readme/tw-cactbot.png) | [![General overlay settings](docs/images/readme/tw-general.png)](docs/images/readme/tw-general.png) |
-| **Show/hide hotkeys** | **Source and URL** |
-| [![Hotkey settings](docs/images/readme/tw-hotkeys.png)](docs/images/readme/tw-hotkeys.png) | [![Source settings](docs/images/readme/tw-source.png)](docs/images/readme/tw-source.png) |
+| [![Global search](docs/images/readme/tw-search.png)](docs/images/readme/tw-search.png) | [![Friends](docs/images/readme/tw-friends.png)](docs/images/readme/tw-friends.png) |
+| **Encounter history · Progression** | **AI assistant** |
+| [![Progression](docs/images/readme/tw-progression.png)](docs/images/readme/tw-progression.png) | [![AI assistant](docs/images/readme/tw-ai.png)](docs/images/readme/tw-ai.png) |
+| **Combat Meter** | **Cactbot and HTML overlays** |
+| [![Combat Meter](docs/images/readme/tw-meter.png)](docs/images/readme/tw-meter.png) | [![Overlays](docs/images/readme/tw-overlays.png)](docs/images/readme/tw-overlays.png) |
+| **Extensions** | **Settings** |
+| [![Extensions](docs/images/readme/tw-extensions.png)](docs/images/readme/tw-extensions.png) | [![Settings](docs/images/readme/tw-settings.png)](docs/images/readme/tw-settings.png) |
+| **Runtime status** | |
+| [![Runtime status](docs/images/readme/tw-status.png)](docs/images/readme/tw-status.png) | |
 
-> Rendered by the Taiwan candidate's actual UI code in Traditional Chinese with offline fixtures, not captured in the game client. Custom display names remain verbatim across UI languages. Click a thumbnail to view it at full size.
+> Screenshots show v1.0.0.0 in the default Deep Ocean skin, rendered by the Taiwan candidate's actual UI code in Traditional Chinese with the plugin's built-in sample encounter and account (the sample data itself is Simplified Chinese), not captured in the game client. Click a thumbnail to view it at full size.
 
 ## Control Center
 
 | Page | What you can do there |
 | --- | --- |
-| Overview | Inspect parser state; toggle parsing, autostart, unfocused web-overlay hiding, and Simplified mode; open the meter, history, runtime status, and log directory |
-| Combat Meter | Select one of three mutually exclusive templates; customize the 8-player classic table, use fixed job/name + DPS/HPS rows for 24 players, and configure opacity or FFLogs where supported |
+| Home | Status cards for the parser, extensions, cloud sync, and friends; quick actions for the meter, encounter history, runtime status, and log directory; toggle parsing, autostart, unfocused web-overlay hiding, and Simplified mode |
+| Combat Meter | Select one of three mutually exclusive templates; configure 8/24-player modes, DPS/HPS ordering, opacity, and FFLogs; select slots directly in the style editor's page preview |
+| Encounter history | Recent encounters, Progression, and log files |
 | Overlays | Install Cactbot, manage alerts, timelines, and custom HTML overlays, and hide web overlays when the game is unfocused |
 | Extensions | Enable extensions, open their configuration, inspect sources and updates, import DLL/ZIP packages, and grant permissions |
-| Cloud Sync | Register or sign in, choose automatic sign-in, manage friend invitations, and upload, preview, restore, or roll back end-to-end encrypted configuration |
-| Settings | View the fixed Taiwan region, restart the parser, copy diagnostics, change language and shortcuts, or start a separately confirmed factory reset |
+| Friends | Friend list, requests, and adding friends; chat and incoming-message notification settings |
+| AI assistant | Diagnose problems, review encounters, usage Q&A, and AI settings (provider, API key, model) |
+| Account & cloud | Register or sign in, choose automatic sign-in, manage friend invitations, and upload, preview, restore, or roll back end-to-end encrypted configuration |
+| Settings | Appearance and skins, scene presets; the global search shortcut; restart the parser, copy diagnostics, change language and shortcuts, or start a separately confirmed factory reset |
 
-The parser region is fixed to Taiwan, including after importing an old profile. Client language remains independent. FFLogs estimates use M5–M8 and the TW population; absent TW data never falls back to CN/global cached scores.
+The Game region on Home is fixed to Taiwan, including after importing an old profile. Client language remains independent. FFLogs estimates use M5–M8 and the TW population; absent TW data never falls back to CN/global cached scores.
 
 ## Common commands
 
@@ -141,12 +156,12 @@ See [Third-party ACT extension compatibility](docs/third-party-compatibility.md)
 
 ### `/actcompat` does nothing or is reported as unknown
 
-Open `/xlplugins` and confirm that Dalamud ACT Compat is installed, enabled, and has no load error. In this state, the plugin's own restart and diagnostics controls cannot work; resolve the Dalamud load error first.
+Open `/xlplugins` and confirm that DACT (TW) is installed, enabled, and has no load error. In this state, the plugin's own restart and diagnostics controls cannot work; resolve the Dalamud load error first.
 
 ### The Combat Meter is missing or always empty
 
 1. Enter `/actcompat meter` and temporarily disable Auto hide out of combat.
-2. Confirm that the parser is Running on Overview and in `/actcompat status`.
+2. Confirm that the parser is Running on Home and in `/actcompat status`.
 3. Deal several valid hits to a striking dummy or duty enemy. Entering a duty, selecting a target, or opening the window does not create combat data.
 4. If it remains empty, restart the parser and create a new sample encounter.
 
@@ -160,15 +175,15 @@ Loading a webpage does not mean its data protocol is connected. Confirm that the
 
 ### What to include in a bug report
 
-Provide the DACT version, occurrence time, reproduction steps, expected and actual behavior, the first failed component in `/actcompat status`, and the complete Copy diagnostics output. Missing or incorrect combat data also requires the matching `Network_*.log`. Review character names, server names, and local paths before sharing.
+The easiest way is the feedback button in the Control Center header: attach screenshots, diagnostics, and AI conversations, and replies arrive in Friends · DACT announcements. For a GitHub issue, provide the DACT version, occurrence time, reproduction steps, expected and actual behavior, the first failed component in `/actcompat status`, and the complete Copy diagnostics output. Missing or incorrect combat data also requires the matching `Network_*.log`. Review character names, server names, and local paths before sharing.
 
 ## How it runs
 
 ```text
 FFXIV / Dalamud process
-└─ Dalamud ACT Compat
+└─ DACT (TW)
    ├─ FFXIV_ACT_Plugin + OverlayPlugin
-   ├─ Control Center, Combat Meter, history, and overlays
+   ├─ Control Center, Combat Meter, encounter history, and overlays
    ├─ accounts, invitations, and locally encrypted cloud configuration sync
    └─ bounded IPC
       ├─ Shared Host: Triggernometry / PostNamazu / FoxTTS / SilverDasher
