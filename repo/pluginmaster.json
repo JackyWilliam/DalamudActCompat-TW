@@ -8,7 +8,7 @@
       "ACT",
       "DACT"
     ],
-    "AssemblyVersion": "1.0.0.0",
+    "AssemblyVersion": "1.0.0.1",
     "TestingAssemblyVersion": null,
     "Description": "台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。",
     "Punchline": "台服專用 ACT 相容平台，預設繁體中文。",
@@ -18,11 +18,11 @@
     "DalamudApiLevel": 13,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.0/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.0/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.0/DalamudActCompat-TW-candidate.zip",
-    "LastUpdate": 1794124941,
-    "Changelog": "台服測試候選版：移植 DACT 1.0 全新控制中心與全域搜尋（Ctrl+Shift+K）、好友頁與可單獨開啟的聊天視窗、戰鬥記錄與開荒進度、皮膚專屬控制項樣式、AI 助手（使用自己的 API Key，預設關閉）與頂欄回饋。每個帳號最多同時登入 5 台電腦，更新後需重新登入一次。保留台服 API 13；台服遊戲內實機表現仍待驗收。",
+    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
+    "LastUpdate": 1794133072,
+    "Changelog": "DACT 1.0.0.1 台服測試候選版：修復介面縮放不是整數倍時（含衛月預設字號）登入頁與好友聊天一直抖動；設定 → 一般新增「開場動畫」（啟動遊戲後首次／每次開啟／關閉）。更新後請完整重啟遊戲，無需重新登入。保留台服 API 13；台服遊戲內實機表現仍待驗收。",
     "CanUnloadAsync": true,
     "IconUrl": "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/images/icon.png"
   }

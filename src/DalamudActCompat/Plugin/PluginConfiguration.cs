@@ -47,6 +47,10 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public bool ShowLauncherButton { get; set; } = true;
 
+    // 开屏动画: when the control center plays its splash. The default is 1.0's behaviour (first open
+    // after each game launch), so existing files without the field keep it.
+    public SplashAnimationMode SplashAnimation { get; set; } = SplashAnimationMode.FirstOpenPerLaunch;
+
     // Display preferences belong to this installation, not the cloud presence profile.
     public bool FriendNotificationsEnabled { get; set; } = true;
     public bool FriendNotificationSoundEnabled { get; set; } = true;
@@ -386,6 +390,7 @@ public sealed class PluginConfiguration : IPluginConfiguration
         EncounterResetMode = EncounterResetMode.DactDefault;
         EncounterResetSeconds = 5;
         ShowLauncherButton = true;
+        SplashAnimation = SplashAnimationMode.FirstOpenPerLaunch;
         HideHtmlOverlaysWhenGameUnfocused = true;
         SimplifiedModeEnabled = false;
         LauncherButtonSize = 80;
@@ -431,6 +436,7 @@ public sealed class PluginConfiguration : IPluginConfiguration
         EncounterResetMode = snapshot.EncounterResetMode;
         EncounterResetSeconds = snapshot.EncounterResetSeconds;
         ShowLauncherButton = snapshot.ShowLauncherButton;
+        SplashAnimation = snapshot.SplashAnimation;
         HideHtmlOverlaysWhenGameUnfocused = snapshot.HideHtmlOverlaysWhenGameUnfocused;
         SimplifiedModeEnabled = snapshot.SimplifiedModeEnabled;
         LauncherButtonSize = snapshot.LauncherButtonSize;
