@@ -8,7 +8,7 @@
       "ACT",
       "DACT"
     ],
-    "AssemblyVersion": "1.0.0.1",
+    "AssemblyVersion": "1.0.0.3",
     "TestingAssemblyVersion": null,
     "Description": "台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。",
     "Punchline": "台服專用 ACT 相容平台，預設繁體中文。",
@@ -18,11 +18,11 @@
     "DalamudApiLevel": 13,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.1/DalamudActCompat-TW-candidate.zip",
-    "LastUpdate": 1794133820,
-    "Changelog": "DACT 1.0.0.1 台服測試候選版：修復介面縮放不是整數倍時（含衛月預設字號）登入頁與好友聊天一直抖動；設定 → 一般新增「開場動畫」（啟動遊戲後首次／每次開啟／關閉）；Triggernometry 新版本與繪圖診斷對不上時不再導致其載入失敗。更新後請完整重啟遊戲，無需重新登入。保留台服 API 13；台服遊戲內實機表現仍待驗收。",
+    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
+    "LastUpdate": 1794151888,
+    "Changelog": "DACT 1.0.0.3 台服測試候選版：修復 Triggernometry 收日誌被誤判卡住（狀態剩餘時間、傷害值等數值被當成未出現的 NPC，每次多等 200 ms，觸發、TTS 和繪圖會一直晚一點）；擴充功能缺少必需權限時（如銀山雀兒未授權「訪問遊戲原生記憶體」）改為提示要開啟哪項權限，不再顯示整段錯誤；權限檢查日誌不再刷屏；修復開場動畫設為「每次開啟」時中途關閉再開啟不從頭播放；光暗未來絕境戰開荒進度階段改按 FFLogs 劃分（P1–P5），舊紀錄自動重算。更新後請完整重啟遊戲，無需重新登入。保留台服 API 13；台服遊戲內實機表現仍待驗收。",
     "CanUnloadAsync": true,
     "IconUrl": "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/images/icon.png"
   }

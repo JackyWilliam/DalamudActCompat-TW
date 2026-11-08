@@ -173,6 +173,8 @@ try
         EncounterWindowAcceptance.Run();
         return 0;
     }
+    await ProgressionPhaseSmokeTests.RunAsync(testRoot);
+    if (args.Contains("--progression-only", StringComparer.Ordinal)) return 0;
     await ManualPluginPackageSmokeTests.RunAsync(testRoot);
     if (args.Contains("--manual-plugins-only", StringComparer.Ordinal)) return 0;
     if (args.Contains("--account-recovery-only", StringComparer.Ordinal))
@@ -1212,6 +1214,38 @@ static async Task ValidateResourcePackLifecycleAsync(string testRoot)
     Assert(
         File.ReadAllText(Path.Combine(rolledBack, "payload.txt")) == "stable-content",
         "A failed resource update did not roll back to the previous verified cache.");
+
+    // The Host must match the plugin exactly. On 1.0.0.0 a failed Host download (GitHub 504,
+    // gh-proxy 500) fell back to the previous version's Host pack, whose rewriter could not load
+    // Triggernometry 2.4.3.0, and nothing told the player. With an older Host pack cached and every
+    // download failing, the Host lookups (allowPreviousVersion: false) must report it unavailable
+    // so the plugin opens its retry dialog; other packs keep the previous-version fallback above.
+    var hostFixture = CreateResourcePackFixture(root, "exact-host", "previous-version-host", "1");
+    WriteResourceCatalog(hostFixture.PluginDirectory, hostFixture.Entry with { Id = "host", Urls = ["https://packs.test/host-v1"] });
+    _ = await new ResourcePackManager(
+            hostFixture.PluginDirectory,
+            hostFixture.CacheDirectory,
+            log,
+            new HttpClient(new ScriptedHttpMessageHandler(_ => ByteResponse(hostFixture.ArchiveBytes))))
+        .ResolveDirectoryAsync("host", "host", CancellationToken.None, allowPreviousVersion: false);
+    var newerHost = CreateResourcePackFixture(root, "exact-host-v2-source", "this-version-host", "2");
+    WriteResourceCatalog(hostFixture.PluginDirectory, newerHost.Entry with { Id = "host", Urls = ["https://packs.test/host-v2"] });
+    var gatewayTimeoutHandler = new ScriptedHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.GatewayTimeout));
+    var exactHostManager = new ResourcePackManager(hostFixture.PluginDirectory, hostFixture.CacheDirectory, log, new HttpClient(gatewayTimeoutHandler));
+    var availableAtStartup = exactHostManager.TryResolveAvailableDirectory("host", "host", out var startupHost, allowPreviousVersion: false);
+    string? resolvedHost = null;
+    Exception? hostFailure = null;
+    try { resolvedHost = await exactHostManager.ResolveDirectoryAsync("host", "host", CancellationToken.None, allowPreviousVersion: false); }
+    catch (Exception ex) { hostFailure = ex; }
+    Assert(
+        !availableAtStartup && startupHost.Length == 0 && resolvedHost is null && hostFailure is not null &&
+        gatewayTimeoutHandler.Requests.Count > 0,
+        "A failed Host download fell back to another version's Host instead of reporting it unavailable.");
+    // The same cache still serves the previous version where that is allowed (Cactbot, extensions).
+    Assert(
+        exactHostManager.TryResolveAvailableDirectory("host", "host", out var anyVersion) &&
+        File.ReadAllText(Path.Combine(anyVersion, "payload.txt")) == "previous-version-host",
+        "The previous-version fallback stopped working for packs that allow it.");
 }
 
 static ResourcePackFixture CreateResourcePackFixture(

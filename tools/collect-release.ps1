@@ -6,7 +6,7 @@ param(
     [string] $OutputDirectory = "artifacts/release",
 
     [Parameter(Mandatory = $false)]
-    [string] $ExpectedAssemblyVersion = "1.0.0.1",
+    [string] $ExpectedAssemblyVersion = "1.0.0.3",
 
     [Parameter(Mandatory = $false)]
     [int] $ExpectedDalamudApiLevel = 15,
@@ -578,6 +578,10 @@ $hostContentHash = Get-DirectoryContentSha256 $hostSource
 $cactbotContentHash = Get-DirectoryContentSha256 $cactbotSource
 $pluginsContentHash = Get-DirectoryContentSha256 $pluginsSource
 
+# The Host is a resource pack, not part of the core: many players in China time out when
+# Dalamud downloads a large core (1.0.0.1 carried the Host and reached 42 MB), while DACT's own
+# pack download resumes and tries a mirror. The plugin only accepts this exact Host pack and
+# never falls back to another version's (ResourcePackManager allowPreviousVersion: false).
 $hostTemporaryPack = Join-Path $outputPath "host-pending.zip"
 New-ResourcePack $hostSource "host" $hostTemporaryPack $packStagingRoot
 $hostArchiveHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $hostTemporaryPack).Hash.ToLowerInvariant()
@@ -621,6 +625,18 @@ $coreTemporary = "$corePack.tmp"
     [IO.Compression.CompressionLevel]::Optimal,
     $false)
 Move-Item -LiteralPath $coreTemporary -Destination $corePack -Force
+$coreArchive = [IO.Compression.ZipFile]::OpenRead($corePack)
+try {
+    if ($coreArchive.Entries | Where-Object { ($_.FullName -replace '\\', '/') -like "host/*" }) {
+        throw "Core package contains host/; the Host ships as its own resource pack to keep the core small."
+    }
+}
+finally {
+    $coreArchive.Dispose()
+}
+if (@($packManifest.packs | Where-Object { $_.id -eq "host" }).Count -ne 1) {
+    throw "resource-packs.json must list exactly one Host pack for this version."
+}
 
 foreach ($descriptor in $packManifest.packs) {
     $packPath = Join-Path $outputPath $descriptor.fileName
@@ -630,6 +646,7 @@ foreach ($descriptor in $packManifest.packs) {
         throw "Generated resource pack failed manifest verification: $($descriptor.id)"
     }
 }
+# Players in China often time out when Dalamud downloads a larger core.
 if ((Get-Item -LiteralPath $corePack).Length -gt 32MB) {
     throw "Core package exceeds the 32 MiB split-package budget."
 }
