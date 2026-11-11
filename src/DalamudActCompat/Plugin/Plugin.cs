@@ -1,4 +1,5 @@
 using Dalamud.Game.Command;
+using DalamudActCompat.Ai;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using Dalamud.Interface.ImGuiFileDialog;
@@ -168,6 +169,7 @@ public sealed class Plugin : IDalamudPlugin
     private bool backgroundOperationShutdownStarted;
     private DateTimeOffset nextHostEntitySnapshotAt;
     private DateTimeOffset nextHostEntityDeltaAt;
+    private readonly HostEntityEpochClock hostEntityEpochClock = new();
     private DateTimeOffset nextHostEntitySnapshotFailureLogAt;
     private HostFfxivEntitySnapshot? hostEntitySnapshotBaseline;
     private IReadOnlyList<ActPlayerIdentity> playerIdentitySnapshot = [];
@@ -383,7 +385,11 @@ public sealed class Plugin : IDalamudPlugin
             () => Volatile.Read(ref silverDasherEventsEnabled) == 1,
             enableMemoryProtection: true,
             packagedHostDirectory: hasPackagedHostResources ? packagedHostDirectory : null,
-            pluginDirectoryProvider: () => paths.ActPluginDirectory);
+            pluginDirectoryProvider: () => paths.ActPluginDirectory,
+            entityEpochClock: hostEntityEpochClock);
+        // AI 助手 requests leave from a separate Host process so accelerators that capture the
+        // game process (NetEase UU) do not tunnel them into an unsupported region.
+        AiClient.Relay = new AiRelay(hostSupervisor.PrepareExecutable, logger);
         hostSupervisor.CommandRequested += OnHostCommandRequested;
         hostSupervisor.PostNamazuHeadingRequested += OnPostNamazuHeadingRequested;
         hostSupervisor.SilverDasherNotificationRequested += OnSilverDasherNotificationRequested;
@@ -961,6 +967,10 @@ public sealed class Plugin : IDalamudPlugin
         CancelCloudRuntimeSession();
         independentHostStartupCancellation.Cancel();
         bundledPluginUpdateChecker.Dispose();
+        // An in-flight AI request then fails as cancelled instead of outliving this load context.
+        var aiRelay = AiClient.Relay;
+        AiClient.Relay = null;
+        aiRelay?.Dispose();
 
         // CanUnloadAsync invokes Dispose away from the framework thread. Marshal only the
         // short Dalamud/UI detach phase back before awaiting background component shutdown.
@@ -5391,12 +5401,14 @@ public sealed class Plugin : IDalamudPlugin
 
         try
         {
+            // Reserved before the object table is read; see HostEntityEpochClock.
+            var epoch = hostEntityEpochClock.BeginCapture();
             var snapshot = FfxivEntitySnapshotBuilder.Build(
                 objectTable,
                 partyList,
                 services.ClientState,
                 playerState,
-                now);
+                now) with { Epoch = epoch };
 
             var baseline = hostEntitySnapshotBaseline;
             if (baseline is null ||
@@ -5426,15 +5438,20 @@ public sealed class Plugin : IDalamudPlugin
                     matchaHostSupervisor.PublishFfxivEntities(snapshot);
                 }
 
+                hostEntityEpochClock.MarkPublished(epoch);
                 return;
             }
 
-            var delta = FfxivEntitySnapshotBuilder.BuildDelta(baseline!, snapshot);
-            if (delta.Upserts.Count == 0 && delta.RemovedIds.Count == 0)
+            var delta = FfxivEntitySnapshotBuilder.BuildDelta(baseline!, snapshot) with { Epoch = epoch };
+            // An unchanged table is normally not worth a message, but a forwarded log line may
+            // be waiting in the Host for exactly this capture.
+            if (delta.Upserts.Count == 0 && delta.RemovedIds.Count == 0 &&
+                !hostEntityEpochClock.IsCaptureAwaited)
             {
                 return;
             }
 
+            hostEntityEpochClock.MarkPublished(epoch);
             hostSupervisor.PublishFfxivEntityDelta(delta);
             genericHostSupervisor.PublishFfxivEntityDelta(delta);
             if (Volatile.Read(ref matchaEventsEnabled) == 1)
