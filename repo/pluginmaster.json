@@ -8,7 +8,7 @@
       "ACT",
       "DACT"
     ],
-    "AssemblyVersion": "1.0.0.3",
+    "AssemblyVersion": "1.0.0.6",
     "TestingAssemblyVersion": null,
     "Description": "台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。",
     "Punchline": "台服專用 ACT 相容平台，預設繁體中文。",
@@ -18,11 +18,11 @@
     "DalamudApiLevel": 13,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.3/DalamudActCompat-TW-candidate.zip",
-    "LastUpdate": 1794151888,
-    "Changelog": "DACT 1.0.0.3 台服測試候選版：修復 Triggernometry 收日誌被誤判卡住（狀態剩餘時間、傷害值等數值被當成未出現的 NPC，每次多等 200 ms，觸發、TTS 和繪圖會一直晚一點）；擴充功能缺少必需權限時（如銀山雀兒未授權「訪問遊戲原生記憶體」）改為提示要開啟哪項權限，不再顯示整段錯誤；權限檢查日誌不再刷屏；修復開場動畫設為「每次開啟」時中途關閉再開啟不從頭播放；光暗未來絕境戰開荒進度階段改按 FFLogs 劃分（P1–P5），舊紀錄自動重算。更新後請完整重啟遊戲，無需重新登入。保留台服 API 13；台服遊戲內實機表現仍待驗收。",
+    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
+    "LastUpdate": 1794377558,
+    "Changelog": "DACT 1.0.0.6 台服測試候選版：修復開著網易 UU 等加速器時 AI 助手連不上（AI 請求改由 DACT 自帶的獨立程序發出，API Key 仍只在本機使用）；服務商依地區拒絕請求時不再誤報「Key 沒有權限」。新增「脫戰隱藏」延遲：可選脫戰後立即、10 秒、30 秒、1 分鐘或 2 分鐘再隱藏。還原雲端備份時保留本機的「遊戲區域」。另修復懸浮窗設定缺少 WebSocket 位址時解析器無法啟動、寶寶椅讀到舊實體資料導致方位播報錯誤、好友頁一直「正在讀取狀態」。更新後請完整重啟遊戲。",
     "CanUnloadAsync": true,
     "IconUrl": "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/images/icon.png"
   }

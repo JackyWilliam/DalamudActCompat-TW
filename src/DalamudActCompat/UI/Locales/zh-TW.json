@@ -450,6 +450,7 @@
   "Friend request not found.": "好友申請不存在。",
   "Friend request processed.": "好友申請已處理。",
   "Friend service connected.": "好友服務已連線。",
+  "The chat data saved on this computer could not be read (it may come from another computer or Windows account). It was set aside and chat started fresh; check the chat history for any message whose delivery was unconfirmed.": "本機儲存的聊天暫存資料無法讀取（可能來自另一台電腦或系統帳號），已另存並重新開始；未確認送出的訊息請以聊天記錄為準。",
   "Friends": "好友",
   "Friends are not available on this server yet. Account and cloud sync remain available.": "伺服器暫未開放好友功能，帳號與雲端同步仍可正常使用。",
   "Friends · {0} online{1}": "好友 · {0} 人線上{1}",
@@ -2084,5 +2085,11 @@
   "Every time the control center opens": "每次開啟控制中心都播放",
   "Click the animation to skip it.": "播放時點一下即可跳過。",
   "Needs permission": "需要授權",
-  "Needs the \"{0}\" permission to start: turn it on under Permissions and the extension restarts.": "需要「{0}」權限才能啟動：在「權限」裡開啟後會自動重新啟動擴充功能。"
+  "Needs the \"{0}\" permission to start: turn it on under Permissions and the extension restarts.": "需要「{0}」權限才能啟動：在「權限」裡開啟後會自動重新啟動擴充功能。",
+  "Hide timing": "隱藏時機",
+  "Immediately": "立即",
+  "After {0} s": "{0} 秒後",
+  "After {0} min": "{0} 分鐘後",
+  "When to hide after combat. With After 30 s and the like, the window stays up for a while so the last pull can be read; re-entering combat keeps it shown.": "脫戰後什麼時候隱藏。選「30 秒後」等，脫戰後會再顯示一會兒，方便看完上一場；期間重新進入戰鬥則一直顯示。",
+  "With Hide out of combat on, the choice next to it sets how long after combat the window hides, for example After 30 s, so the last pull can still be read. Hide timing on the Overlays page works the same way.": "打開「脫戰隱藏」後，旁邊可以選脫戰後多久隱藏，例如「30 秒後」：脫戰後再顯示一會兒，方便看完上一場。懸浮窗頁的「隱藏時機」是同樣的設定。"
 }
