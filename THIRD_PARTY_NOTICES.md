@@ -50,10 +50,10 @@ own plugin configuration directory; on a later DalamudActCompat update, it
 upgrades older bundled Cactbot versions without overwriting files under
 `cactbot/user/`.
 
-- OverlayPlugin/cactbot 0.37.5
+- OverlayPlugin/cactbot 0.37.6
   - Project/source: <https://github.com/OverlayPlugin/cactbot>
-  - Release: <https://github.com/OverlayPlugin/cactbot/releases/tag/v0.37.5>
-  - Package: <https://github.com/OverlayPlugin/cactbot/releases/download/v0.37.5/cactbot-0.37.5.zip>
+  - Release: <https://github.com/OverlayPlugin/cactbot/releases/tag/v0.37.6>
+  - Package: <https://github.com/OverlayPlugin/cactbot/releases/download/v0.37.6/cactbot-0.37.6.zip>
   - License: Apache-2.0; the license text is included with the bundled package.
 
 `FFXIV_ACT_Plugin` and its SDK assemblies are official binary dependencies.
@@ -83,10 +83,14 @@ is enabled after installation and starts last in its own dedicated Host process.
   - Project/source: <https://github.com/Noisyfox/ACT.FoxTTS>
   - DLL release asset: <https://github.com/Noisyfox/ACT.FoxTTS/releases/download/3.3.1/ACT.FoxTTS-3.3.1.189-Release.7z>
   - License: GPL-3.0; the license text is included with the bundled files.
-- PostNamazu 1.3.6.6
+- PostNamazu 1.3.6.6 (built from upstream master)
   - Author/maintainer: Natsukage
   - Project/source: <https://github.com/Natsukage/PostNamazu>
-  - DLL release asset: <https://github.com/Natsukage/PostNamazu/releases/download/1.3.6.6/PostNamazu.zip>
+  - Source of the bundled DLL: <https://github.com/Natsukage/PostNamazu/tree/521007c86343782c6bc9a52d5e192e520fcf32ca>,
+    built by this project with upstream's own CI steps
+    (`tools/build-postnamazu-snapshot.ps1`). It is not an official release asset: the
+    call scheduler that Simulant v0.1.0.0 requires is on upstream master but not yet in a
+    release, and the build keeps the version number the source declares.
   - Redistribution is authorized by the author; the upstream repository does
     not declare an SPDX license.
 - SilverDasher 0.6.0.4

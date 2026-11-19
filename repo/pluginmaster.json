@@ -8,7 +8,7 @@
       "ACT",
       "DACT"
     ],
-    "AssemblyVersion": "1.0.0.6",
+    "AssemblyVersion": "1.0.0.11",
     "TestingAssemblyVersion": null,
     "Description": "台服 API 13 專用測試候選版，預設繁體中文。整合戰鬥統計、Cactbot、HTML 懸浮窗、快捷鍵與 ACT 擴充套件；不包含 Matcha。遊戲內相容性仍待驗收。",
     "Punchline": "台服專用 ACT 相容平台，預設繁體中文。",
@@ -18,11 +18,11 @@
     "DalamudApiLevel": 13,
     "IsHide": false,
     "IsTestingExclusive": false,
-    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
-    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.6/DalamudActCompat-TW-candidate.zip",
-    "LastUpdate": 1794377558,
-    "Changelog": "DACT 1.0.0.6 台服測試候選版：修復開著網易 UU 等加速器時 AI 助手連不上（AI 請求改由 DACT 自帶的獨立程序發出，API Key 仍只在本機使用）；服務商依地區拒絕請求時不再誤報「Key 沒有權限」。新增「脫戰隱藏」延遲：可選脫戰後立即、10 秒、30 秒、1 分鐘或 2 分鐘再隱藏。還原雲端備份時保留本機的「遊戲區域」。另修復懸浮窗設定缺少 WebSocket 位址時解析器無法啟動、寶寶椅讀到舊實體資料導致方位播報錯誤、好友頁一直「正在讀取狀態」。更新後請完整重啟遊戲。",
+    "DownloadLinkInstall": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.11/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkUpdate": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.11/DalamudActCompat-TW-candidate.zip",
+    "DownloadLinkTesting": "https://github.com/JackyWilliam/DalamudActCompat-TW/releases/download/v1.0.0.11/DalamudActCompat-TW-candidate.zip",
+    "LastUpdate": 1795078901,
+    "Changelog": "DACT 1.0.0.11 台服測試候選版：開荒進度的階段不再亂跳——七個絕本都按各自的階段表計數，同場敵人互相換位不再多數階段，舊紀錄自動更正；人多的戰鬥不再嚴重掉幀，同步給 Host 的資料減少約一半；解析範圍預設改為「自動」，戰鬥統計不再被旁人的戰鬥帶著計時；回饋改為獨立視窗、描述框自動換行；橫版榜單可按視窗寬度收窄；隨包 Cactbot 0.37.6；適配仿生石 v0.1.0.0，隨包鯰魚精郵差改為帶呼叫排程器的版本（更新後需確認一次）；缺少 WebView2 Runtime 時提示正確原因。本版尚未在台服遊戲內實機驗證。更新後請完整重啟遊戲。",
     "CanUnloadAsync": true,
     "IconUrl": "https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/src/DalamudActCompat/images/icon.png"
   }

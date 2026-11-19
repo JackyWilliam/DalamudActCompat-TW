@@ -86,6 +86,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ControlCenterWindow settingsWindow;
     private readonly HelpWindow helpWindow;
     private readonly SearchWindow searchWindow;
+    private readonly FeedbackWindow feedbackWindow;
     private readonly SearchHotkey searchHotkey;
     private readonly SettingsWindow advancedSettingsWindow;
     private readonly StatusWindow statusWindow;
@@ -819,7 +820,11 @@ public sealed class Plugin : IDalamudPlugin
         searchWindow = new SearchWindow(settingsWindow);
         settingsWindow.SearchShortcut = searchHotkey;
         settingsWindow.OpenSearchWindow = () => { if (!searchWindow.IsOpen) searchWindow.ToggleSearch(); };
-        meterStyleEditorWindow.OpenFeedback = () => { settingsWindow.ShowAnimated(); settingsWindow.OpenFeedback(); };
+        feedbackWindow = new FeedbackWindow(settingsWindow);
+        settingsWindow.ShowFeedbackWindow = feedbackWindow.Present;
+        settingsWindow.IsFeedbackWindowOpen = () => feedbackWindow.IsOpen;
+        // The form has its own window now, so the layout editor no longer opens the control center for it.
+        meterStyleEditorWindow.OpenFeedback = () => settingsWindow.OpenFeedback();
         meterStyleEditorWindow.OpenHelp = () => helpWindow.OpenTopic("CombatMeter");
         meterStyleEditorWindow.OpenMeterSettings = settingsWindow.ShowMeterPage;
         var aiKeys = new DalamudActCompat.Ai.AiKeyStore(paths.AiKeyDirectory, paths.AiKeyFile);
@@ -907,6 +912,7 @@ public sealed class Plugin : IDalamudPlugin
         windowSystem.AddWindow(cloudBanNoticeWindow);
         windowSystem.AddWindow(launcherWindow);
         windowSystem.AddWindow(searchWindow);
+        windowSystem.AddWindow(feedbackWindow);
         filePicker = new DactFilePicker(text, logoTexture);
         windowSystem.AddWindow(filePicker);
         // Authentication gates functional windows; account state changes only notify.
@@ -1329,6 +1335,7 @@ public sealed class Plugin : IDalamudPlugin
         meterStyleEditorWindow.IsOpen = false;
         simplifiedHomeWindow.IsOpen = false;
         searchWindow.IsOpen = false;
+        feedbackWindow.IsOpen = false;
     }
 
     private void RestoreWindowsAfterAuthenticationGate()
@@ -5392,6 +5399,16 @@ public sealed class Plugin : IDalamudPlugin
         {
             return;
         }
+        // The 30 ms captures exist only to keep the Hosts' entities fresh. Without a running
+        // Host, reading the whole object table that often is pure cost on the frame thread;
+        // the 500 ms capture below still refreshes the identities the parser uses.
+        if (!fullSnapshotDue &&
+            !hostSupervisor.IsRunning &&
+            !genericHostSupervisor.IsRunning &&
+            !(Volatile.Read(ref matchaEventsEnabled) == 1 && matchaHostSupervisor.IsRunning))
+        {
+            return;
+        }
 
         nextHostEntityDeltaAt = now.AddMilliseconds(30);
         if (fullSnapshotDue)
@@ -5431,11 +5448,16 @@ public sealed class Plugin : IDalamudPlugin
                 Volatile.Write(ref playerIdentitySnapshot, identities);
                 Volatile.Write(ref observedPlayerIdentitySnapshot, BuildObservedPlayerIdentities(objectTable));
                 hostEntitySnapshotBaseline = snapshot;
-                hostSupervisor.PublishFfxivEntities(snapshot);
-                genericHostSupervisor.PublishFfxivEntities(snapshot);
+                // Serialized on first use and shared: this is the frame thread, and three
+                // Hosts used to cost three serializations of every actor in the zone.
+                System.Text.Json.JsonElement? serializedSnapshot = null;
+                System.Text.Json.JsonElement SerializedSnapshot()
+                    => serializedSnapshot ??= System.Text.Json.JsonSerializer.SerializeToElement(snapshot);
+                hostSupervisor.PublishFfxivEntities(SerializedSnapshot);
+                genericHostSupervisor.PublishFfxivEntities(SerializedSnapshot);
                 if (Volatile.Read(ref matchaEventsEnabled) == 1)
                 {
-                    matchaHostSupervisor.PublishFfxivEntities(snapshot);
+                    matchaHostSupervisor.PublishFfxivEntities(SerializedSnapshot);
                 }
 
                 hostEntityEpochClock.MarkPublished(epoch);
@@ -5452,11 +5474,14 @@ public sealed class Plugin : IDalamudPlugin
             }
 
             hostEntityEpochClock.MarkPublished(epoch);
-            hostSupervisor.PublishFfxivEntityDelta(delta);
-            genericHostSupervisor.PublishFfxivEntityDelta(delta);
+            System.Text.Json.JsonElement? serializedDelta = null;
+            System.Text.Json.JsonElement SerializedDelta()
+                => serializedDelta ??= System.Text.Json.JsonSerializer.SerializeToElement(delta);
+            hostSupervisor.PublishFfxivEntityDelta(SerializedDelta);
+            genericHostSupervisor.PublishFfxivEntityDelta(SerializedDelta);
             if (Volatile.Read(ref matchaEventsEnabled) == 1)
             {
-                matchaHostSupervisor.PublishFfxivEntityDelta(delta);
+                matchaHostSupervisor.PublishFfxivEntityDelta(SerializedDelta);
             }
         }
         catch (Exception ex)

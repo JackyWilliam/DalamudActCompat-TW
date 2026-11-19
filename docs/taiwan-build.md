@@ -16,7 +16,7 @@
 - Dalamud：yanmucorp 13.0.0.16，遊戲版本 `2026.09.14.0000.0000`。
 - FFXIV_ACT_Plugin 3.0.3.1、Unscrambler 7.41.1；完整來源與 SHA-256 見 `tools/taiwan-dependencies.lock.json`。
 - DACT 介面、嵌入式 ACT 與 Host 功能在台服上游分支中重新合入，原工作目錄保持不變。
-- 功能與原專案 1.0.0.6 同步（合併原專案 0.4.5.8–0.4.5.20 的介面、帳號、Host、觸發器時間基準、木人統計、近期戰鬥頁、command 靜默語義、Redraw/108 診斷、Triggernometry 2.4.1.1／2.4.3.0 相容與外掛清單圖示修復，以及 1.0.0.0 的控制中心重做、全域搜尋、好友頁、戰鬥記錄與開荒進度、皮膚、AI 助手、回饋、5 台裝置上限與 DNS 備援，1.0.0.1 的非整數縮放抖動修復與開場動畫設定、1.0.0.2 的開場動畫「每次開啟」重播修復、光暗未來絕境戰開荒階段按 FFLogs 劃分與 Host 只用同版本，以及 1.0.0.6 的 Triggernometry 日誌等待誤判修復、擴充套件缺權限提示與權限日誌去重），隨包 Triggernometry 為 2.4.3.0。AI 助手在 .NET 9 上隨套件提供 System.Text.Json 10，外掛與框架之間不傳遞 JSON 型別，見 `PluginLoadContextSmokeTests`。原專案的國服／國際服 7.57 解析依賴、收包簽名與操作碼不適用台服，不隨同步帶入；台服仍使用上列依賴鏈與自己的操作碼表。
+- 功能與原專案 1.0.0.11 同步（合併原專案 0.4.5.8–0.4.5.20 的介面、帳號、Host、觸發器時間基準、木人統計、近期戰鬥頁、command 靜默語義、Redraw/108 診斷、Triggernometry 2.4.1.1／2.4.3.0 相容與外掛清單圖示修復，以及 1.0.0.0 的控制中心重做、全域搜尋、好友頁、戰鬥記錄與開荒進度、皮膚、AI 助手、回饋、5 台裝置上限與 DNS 備援，1.0.0.1 的非整數縮放抖動修復與開場動畫設定、1.0.0.2 的開場動畫「每次開啟」重播修復、光暗未來絕境戰開荒階段按 FFLogs 劃分與 Host 只用同版本，1.0.0.6 的 Triggernometry 日誌等待誤判修復、擴充套件缺權限提示與權限日誌去重，以及 1.0.0.8–1.0.0.11 的解析範圍預設改為自動、回饋獨立視窗與描述框換行、職能分欄榜單捲軸、橫版榜單收窄、人多戰鬥的快照限頻、實體同步減負（Host 協定 8）、七個絕本的開荒階段表與同場敵人換位不計階段、仿生石 v0.1.0.0 適配、WebView2 Runtime 缺失提示與診斷日誌保留完整例外），隨包 Triggernometry 為 2.4.3.0、Cactbot 為 0.37.6，鯰魚精郵差為按上游 master（`521007c`）建置的 1.3.6.6。原專案 1.0.0.7 的 7.58 FATE／跨服排隊封包編號不適用台服。AI 助手在 .NET 9 上隨套件提供 System.Text.Json 10，外掛與框架之間不傳遞 JSON 型別，見 `PluginLoadContextSmokeTests`。原專案的國服／國際服 7.57 解析依賴、收包簽名與操作碼不適用台服，不隨同步帶入；台服仍使用上列依賴鏈與自己的操作碼表。
 
 安裝 .NET SDK 10（用於 slnx）、.NET 9 Windows Desktop 執行庫與 7-Zip，並遞迴檢出子模組：
 
@@ -30,7 +30,7 @@ cd DalamudActCompat-TW
 
 指令碼驗證引用雜湊、構建完整解決方案、執行離線 smoke，並生成 `artifacts/taiwan/DalamudActCompat-TW-candidate.zip` 與 SHA-256，並將 Host、Cactbot、擴充套件逐檔與本次構建／來源比對，輸出 `resource-content-hashes.json`。API 13 模組和 Host 均面向 .NET 9；打包工具版本不代表遊戲執行時 API。
 
-台服獨立訂閱已提供 **1.0.0.6 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
+台服獨立訂閱已提供 **1.0.0.11 測試候選版**，安裝及更新均指向本倉庫的台服 Release 資產。庫鏈為：
 
 ```text
 https://raw.githubusercontent.com/JackyWilliam/DalamudActCompat-TW/main/repo/pluginmaster.json
