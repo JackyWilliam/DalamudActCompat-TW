@@ -10,7 +10,7 @@ namespace DalamudActCompat.Plugin;
 
 public sealed class PluginConfiguration : IPluginConfiguration
 {
-    private const int CurrentVersion = 18;
+    private const int CurrentVersion = 19;
     // The UI preference is independent of the Taiwan parser and client language.
     private const string DefaultUiLanguage = "zh-TW";
 
@@ -40,7 +40,9 @@ public sealed class PluginConfiguration : IPluginConfiguration
 
     public GameRegionMode GameRegionMode { get; set; } = GameRegionMode.TraditionalChinese;
 
-    public ParserScope ParserScope { get; set; } = ParserScope.All;
+    // Auto follows the actual group (solo → Self). "Everyone" lets strangers fighting nearby
+    // open and time the encounter, so it is an explicit choice rather than the default.
+    public ParserScope ParserScope { get; set; } = ParserScope.Auto;
 
     public EncounterResetMode EncounterResetMode { get; set; } = EncounterResetMode.DactDefault;
     public int EncounterResetSeconds { get; set; } = 5;
@@ -134,7 +136,7 @@ public sealed class PluginConfiguration : IPluginConfiguration
         }
         if (!Enum.IsDefined(ParserScope))
         {
-            ParserScope = ParserScope.All;
+            ParserScope = ParserScope.Auto;
             changed = true;
         }
         if (Appearance is null)
@@ -366,6 +368,19 @@ public sealed class PluginConfiguration : IPluginConfiguration
             changed = true;
         }
 
+        if (Version < 19)
+        {
+            // "Everyone" was the untouched default until 1.0.0.7, so a stored value says nothing
+            // about intent; it moves to Auto once. Only a meter set to follow the parse scope
+            // shows that the player wants everyone parsed, and keeps it.
+            if (ParserScope == ParserScope.All && Meter.DisplayScope != MeterDisplayScope.ParserScope)
+            {
+                ParserScope = ParserScope.Auto;
+            }
+            Version = 19;
+            changed = true;
+        }
+
         changed |= Meter.MigrateIndependentDataBarOpacity();
         return changed;
     }
@@ -386,7 +401,7 @@ public sealed class PluginConfiguration : IPluginConfiguration
         // Reset must match a fresh installation of this regional build, including cloud default detection.
         UiLanguage = DefaultUiLanguage;
         GameRegionMode = GameRegionMode.TraditionalChinese;
-        ParserScope = ParserScope.All;
+        ParserScope = ParserScope.Auto;
         EncounterResetMode = EncounterResetMode.DactDefault;
         EncounterResetSeconds = 5;
         ShowLauncherButton = true;
